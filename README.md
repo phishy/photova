@@ -36,6 +36,17 @@ pnpm add brighten
 <script src="https://unpkg.com/brighten@0.1.0/dist/brighten.umd.js"></script>
 ```
 
+## Examples
+
+Check out the framework-specific examples in the [`examples/`](examples/) directory:
+
+- [**Vanilla JS**](examples/vanilla/) - Plain HTML + JavaScript
+- [**React**](examples/react/) - React 18 + TypeScript + Vite
+- [**Vue**](examples/vue/) - Vue 3 + TypeScript + Vite
+- [**Next.js**](examples/nextjs/) - Next.js 14 (App Router)
+
+Each example includes setup instructions and demonstrates core features.
+
 ## Quick Start
 
 The easiest way to use Brighten is via the drop-in UI component.
@@ -186,4 +197,4 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Business Source License 1.1 - see the [LICENSE](LICENSE) file for details. The license converts to Apache 2.0 after 4 years.

@@ -93,9 +93,13 @@ const result = await aiManager.removeBackground(imageBlob);
 npm install          # Install dependencies
 npm run dev          # Development server
 npm run build        # Build library
-npm run test         # Run tests
+npm test -- --run    # Run tests
 npm run lint         # Lint code
 ```
+
+## Testing Requirements
+
+**IMPORTANT**: After making any code changes, you MUST run `npm test -- --run` and ensure all tests pass before considering the task complete.
 
 ## Adding Features
 

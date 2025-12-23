@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brighten - Vanilla JS Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 16px 24px;
+      background: #111;
+      border-bottom: 1px solid #333;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      gap: 16px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #3a3a3a;
+    }
+
+    button.primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
+
+    button.primary:hover {
+      background: #2563eb;
+    }
+
+    #editor-container {
+      flex: 1;
+      min-height: 500px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #333;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Brighten - Vanilla JS Example</h1>
+  </header>
+
+  <main>
+    <div class="controls">
+      <button class="primary" onclick="document.getElementById('file-input').click()">
+        Open Image
+      </button>
+      <button onclick="exportImage()">Export</button>
+      <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+    </div>
+
+    <div id="editor-container"></div>
+  </main>
+
+  <script type="module">
+    import { createEditorUI } from 'brighten';
+
+    const editor = createEditorUI({
+      container: document.getElementById('editor-container'),
+      theme: 'dark',
+      onExport: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `edited-image-${Date.now()}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    window.editorInstance = editor;
+
+    window.handleFileSelect = async (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        await editor.loadImage(file);
+      }
+    };
+
+    window.exportImage = () => {
+      editor.export();
+    };
+
+    // Load a sample image
+    editor.loadImage('https://picsum.photos/id/1015/1200/800');
+  </script>
+</body>
+</html>
