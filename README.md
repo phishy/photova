@@ -6,7 +6,7 @@
 
 Brighten is a powerful, extensible JavaScript/TypeScript photo editor SDK for the web. It provides a drop-in UI component and a comprehensive programmatic API for image manipulation.
 
-![Brighten Screenshot](screenshot.png)
+![Brighten Screenshot](packages/brighten/screenshot.png)
 
 ## Features
 
