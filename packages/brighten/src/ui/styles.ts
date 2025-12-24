@@ -430,19 +430,13 @@ export const defaultStyles = `
 
 .brighten-ai-border {
   position: absolute;
-  inset: -4px;
+  inset: 0;
   z-index: 200;
   pointer-events: none;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.brighten-ai-border::before {
-  content: '';
-  position: absolute;
-  inset: -50%;
+  border-radius: 4px;
+  padding: 3px;
   background: conic-gradient(
-    from 0deg,
+    from var(--glow-angle, 0deg),
     #BC82F3,
     #F5B9EA,
     #8D9FFF,
@@ -452,15 +446,25 @@ export const defaultStyles = `
     #C686FF,
     #BC82F3
   );
-  animation: brighten-ai-glow-rotate 2s linear infinite;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: brighten-ai-border-rotate 2s linear infinite;
 }
 
-.brighten-ai-border::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  background: var(--brighten-bg);
-  border-radius: 4px;
+@keyframes brighten-ai-border-rotate {
+  to { --glow-angle: 360deg; }
+}
+
+@property --glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
 }
 `;
 

@@ -640,7 +640,9 @@ export class EditorUI {
       const isLeftButton = e.button === 0;
       
       if (!isMiddleButton && !isLeftButton) return;
-      if (isLeftButton && this.currentTool !== 'select') return;
+      const toolsWithOwnInteraction = ['brush', 'crop'];
+      if (isLeftButton && toolsWithOwnInteraction.includes(this.currentTool)) return;
+      if (isLeftButton && this.inpaintMode) return;
       if (this.cropRect) return;
 
       const currentPan = this.editor.getPan();
