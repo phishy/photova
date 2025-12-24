@@ -25,6 +25,9 @@ Brighten is a photo editor ecosystem with two packages:
   - Build/test commands
   - Internal APIs that other agents need to know about
 
+- **docs/** - Update when changing:
+  - `competition.md` - Competitive analysis, market positioning, feature comparisons
+
 ## Monorepo Structure
 
 ```

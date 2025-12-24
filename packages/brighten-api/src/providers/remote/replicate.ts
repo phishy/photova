@@ -57,9 +57,6 @@ export class ReplicateProvider extends BaseProvider {
 
     if (modelConfig.maskKey && input.options?.mask) {
       modelInput[modelConfig.maskKey] = input.options.mask;
-      console.log('[DEBUG] Mask provided, length:', (input.options.mask as string).length);
-    } else if (modelConfig.maskKey) {
-      console.log('[DEBUG] Mask key expected but no mask provided in options:', Object.keys(input.options || {}));
     }
     
     if (input.options) {
@@ -70,7 +67,6 @@ export class ReplicateProvider extends BaseProvider {
       }
     }
 
-    console.log('[DEBUG] Model input keys:', Object.keys(modelInput));
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
