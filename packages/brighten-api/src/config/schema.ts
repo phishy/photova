@@ -19,11 +19,24 @@ export const OperationConfigSchema = z.object({
   options: z.record(z.unknown()).optional(),
 });
 
+export const PocketBaseConfigSchema = z.object({
+  url: z.string().url().optional().default('http://127.0.0.1:8090'),
+  admin_email: z.string().optional(),
+  admin_password: z.string().optional(),
+});
+
+export const AuthConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  pocketbase: PocketBaseConfigSchema.optional(),
+});
+
 export const ConfigSchema = z.object({
   server: z.object({
     port: z.number().default(3000),
     host: z.string().default('0.0.0.0'),
   }).default({}),
+
+  auth: AuthConfigSchema.default({ enabled: false }),
 
   operations: z.record(OperationConfigSchema),
 
@@ -40,3 +53,5 @@ export type Config = z.infer<typeof ConfigSchema>;
 export type OperationConfig = z.infer<typeof OperationConfigSchema>;
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>;
 export type LocalProviderConfig = z.infer<typeof LocalProviderConfigSchema>;
+export type PocketBaseConfig = z.infer<typeof PocketBaseConfigSchema>;
+export type AuthConfig = z.infer<typeof AuthConfigSchema>;

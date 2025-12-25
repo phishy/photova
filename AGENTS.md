@@ -179,6 +179,11 @@ const myPlugin: Plugin = {
 
 ```
 packages/brighten-api/src/
+├── auth/             # Authentication and API key management (PocketBase)
+│   ├── types.ts      # User, ApiKey, UsageLog types
+│   ├── client.ts     # PocketBase client wrapper
+│   ├── middleware.ts # Express middleware for API key auth
+│   └── index.ts
 ├── config/           # YAML config loading with Zod validation
 │   ├── schema.ts     # Config types and Zod schemas
 │   ├── loader.ts     # Loads YAML, interpolates ${ENV_VARS}
@@ -196,6 +201,10 @@ packages/brighten-api/src/
 ├── router/           # Routes operations to providers based on config
 │   └── index.ts
 ├── server/           # Express API server
+│   ├── index.ts      # Main server, homepage, docs, dashboard
+│   └── routes.ts     # Auth, API keys, and usage routes
+├── usage/            # Usage tracking and analytics
+│   ├── service.ts    # Usage logging and aggregation
 │   └── index.ts
 └── index.ts
 ```
@@ -213,14 +222,29 @@ Routes operations to configured providers with fallback support.
 - **FalProvider** - fal.ai integration (not yet configured)
 - **RemoveBgProvider** - remove.bg API (not yet configured)
 
+### Authentication (`src/auth/`)
+PocketBase-based authentication system:
+- **types.ts** - User, ApiKey, UsageLog, UsageDaily interfaces
+- **client.ts** - PocketBase client with typed collection helpers
+- **middleware.ts** - `requireApiKey()` middleware for API operations
+
+### Usage Tracking (`src/usage/`)
+- **service.ts** - `logUsage()`, `getUsageSummary()`, `getTimeSeries()`
+
 ### Server (`src/server/index.ts`)
 Express server with endpoints:
 - `GET /` - HTML homepage with API overview
 - `GET /docs` - Interactive API documentation (Redoc)
+- `GET /dashboard` - User dashboard (when auth enabled)
 - `GET /api/health` - Health check
 - `GET /api/operations` - List available operations
 - `GET /api/openapi.json` - OpenAPI spec
-- `POST /api/v1/:operation` - Execute an operation (e.g., `/api/v1/background-remove`)
+- `POST /api/v1/:operation` - Execute an operation (requires API key when auth enabled)
+
+### Routes (`src/server/routes.ts`) - When auth enabled:
+- `POST /api/auth/signup`, `/login`, `/logout`, `GET /me`, `PATCH /me`
+- `GET /api/keys`, `POST /api/keys`, `PATCH /api/keys/:id`, `DELETE /api/keys/:id`
+- `GET /api/usage/summary`, `/timeseries`, `/current`
 
 ## Configuration
 

@@ -4,6 +4,10 @@ import type { Config } from '../config/schema.js';
 import { OperationRouter } from '../router/index.js';
 import type { OperationType } from '../operations/types.js';
 import { generateOpenAPISpec } from '../openapi.js';
+import { initPocketBase } from '../auth/client.js';
+import { requireApiKey } from '../auth/middleware.js';
+import { logUsage } from '../usage/service.js';
+import { createAuthRoutes, createApiKeysRoutes, createUsageRoutes } from './routes.js';
 
 function getHomepageHtml(): string {
   return `<!DOCTYPE html>
@@ -855,9 +859,738 @@ function getDocsHtml(): string {
 </html>`;
 }
 
+function getDashboardHtml(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Brighten API</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0c0e;
+      --surface: #151619;
+      --surface-hover: #1c1d21;
+      --fg: #fff;
+      --gray-400: #94a3b8;
+      --gray-500: #71717a;
+      --gray-600: #52525b;
+      --primary: #3b82f6;
+      --primary-hover: #60a5fa;
+      --success: #22c55e;
+      --error: #ef4444;
+      --border: rgba(255,255,255,0.08);
+      --border-hover: rgba(255,255,255,0.16);
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    
+    .app { display: flex; min-height: 100vh; }
+    
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .logo {
+      font-weight: 600;
+      font-size: 16px;
+      padding: 0 8px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .logo svg { color: var(--primary); }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: var(--gray-400);
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 4px;
+    }
+    
+    .nav-item:hover { background: var(--surface-hover); color: var(--fg); }
+    .nav-item.active { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
+    
+    .nav-item svg { width: 18px; height: 18px; opacity: 0.7; }
+    
+    .sidebar-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid var(--border); }
+    
+    .main { flex: 1; padding: 32px 48px; overflow-y: auto; }
+    
+    .page-header {
+      margin-bottom: 32px;
+    }
+    
+    .page-header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+    .page-header p { color: var(--gray-400); margin-top: 4px; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    
+    .stat-label { font-size: 13px; color: var(--gray-400); margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+    .stat-sub { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+    
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .card-title { font-size: 14px; font-weight: 600; }
+    .card-body { padding: 20px; }
+    
+    .chart-container { height: 280px; position: relative; }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    
+    .btn-primary { background: var(--primary); color: var(--fg); }
+    .btn-primary:hover { background: var(--primary-hover); }
+    
+    .btn-secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--surface-hover); border-color: var(--border-hover); }
+    
+    .btn-danger { background: transparent; color: var(--error); border: 1px solid var(--error); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
+    
+    .keys-list { display: flex; flex-direction: column; gap: 12px; }
+    
+    .key-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+    
+    .key-info { flex: 1; }
+    .key-name { font-weight: 500; margin-bottom: 4px; }
+    .key-prefix { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--gray-400); }
+    .key-meta { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+    .key-actions { display: flex; gap: 8px; }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 100px;
+      text-transform: uppercase;
+    }
+    
+    .status-active { background: rgba(34, 197, 94, 0.1); color: var(--success); }
+    .status-revoked { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--fg);
+      font-size: 14px;
+    }
+    
+    .form-input:focus { outline: none; border-color: var(--primary); }
+    
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    .modal-overlay.show { display: flex; }
+    
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 440px;
+      padding: 24px;
+    }
+    
+    .modal-header { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    
+    .new-key-display {
+      background: var(--bg);
+      border: 1px solid var(--success);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+    
+    .new-key-display code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      word-break: break-all;
+    }
+    
+    .new-key-warning {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-top: 8px;
+    }
+    
+    .usage-table { width: 100%; border-collapse: collapse; }
+    .usage-table th { text-align: left; font-size: 12px; font-weight: 500; color: var(--gray-400); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .usage-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    .usage-table tr:hover { background: var(--surface-hover); }
+    
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+    
+    .auth-header { text-align: center; margin-bottom: 32px; }
+    .auth-header h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .auth-header p { color: var(--gray-400); font-size: 14px; }
+    
+    .auth-footer { text-align: center; margin-top: 24px; font-size: 14px; color: var(--gray-400); }
+    .auth-footer a { color: var(--primary); text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+    
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--error);
+      display: none;
+    }
+    
+    .error-message.show { display: block; }
+    
+    .hidden { display: none !important; }
+    
+    @media (max-width: 1024px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { padding: 24px; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="auth-page" class="auth-page">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>Brighten API</h1>
+        <p id="auth-subtitle">Sign in to your account</p>
+      </div>
+      <div id="auth-error" class="error-message"></div>
+      <form id="auth-form">
+        <div id="name-group" class="form-group hidden">
+          <label class="form-label">Name</label>
+          <input type="text" id="name" class="form-input" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+        </div>
+        <button type="submit" id="auth-submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Sign In</button>
+      </form>
+      <div class="auth-footer">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <a href="#" id="auth-toggle">Sign up</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <aside class="sidebar">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+        Brighten
+      </div>
+      <nav>
+        <a class="nav-item active" data-page="overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Overview
+        </a>
+        <a class="nav-item" data-page="keys">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          API Keys
+        </a>
+        <a class="nav-item" data-page="usage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Usage
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <a class="nav-item" href="/docs" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Documentation
+        </a>
+        <a class="nav-item" id="logout-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="page-overview">
+        <div class="page-header">
+          <h1>Overview</h1>
+          <p>Welcome back! Here's your API usage summary.</p>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Requests This Month</div>
+            <div class="stat-value" id="stat-requests">-</div>
+            <div class="stat-sub" id="stat-limit">of - limit</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Success Rate</div>
+            <div class="stat-value" id="stat-success">-</div>
+            <div class="stat-sub">last 30 days</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Avg Latency</div>
+            <div class="stat-value" id="stat-latency">-</div>
+            <div class="stat-sub">milliseconds</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Keys</div>
+            <div class="stat-value" id="stat-keys">-</div>
+            <div class="stat-sub">API keys</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Requests (Last 30 Days)</span>
+          </div>
+          <div class="card-body">
+            <div class="chart-container">
+              <canvas id="requests-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-keys" class="hidden">
+        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h1>API Keys</h1>
+            <p>Manage your API keys for accessing the Brighten API.</p>
+          </div>
+          <button class="btn btn-primary" id="create-key-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Key
+          </button>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="keys-list" id="keys-list">
+              <div style="text-align: center; color: var(--gray-500); padding: 24px;">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-usage" class="hidden">
+        <div class="page-header">
+          <h1>Usage</h1>
+          <p>Detailed breakdown of your API usage by operation.</p>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Usage by Operation</span>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <table class="usage-table">
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Requests</th>
+                  <th>Errors</th>
+                  <th>Avg Latency</th>
+                </tr>
+              </thead>
+              <tbody id="usage-table-body">
+                <tr><td colspan="4" style="text-align: center; color: var(--gray-500); padding: 24px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="create-key-modal">
+    <div class="modal">
+      <div class="modal-header">Create API Key</div>
+      <form id="create-key-form">
+        <div class="form-group">
+          <label class="form-label">Key Name</label>
+          <input type="text" id="key-name" class="form-input" placeholder="e.g., Production" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-create-key">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Key</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="new-key-modal">
+    <div class="modal">
+      <div class="modal-header">API Key Created</div>
+      <div class="new-key-display">
+        <code id="new-key-value"></code>
+      </div>
+      <div class="new-key-warning">
+        Make sure to copy your API key now. You won't be able to see it again!
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="copy-key-btn">Copy</button>
+        <button type="button" class="btn btn-primary" id="close-new-key-modal">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api';
+    let token = localStorage.getItem('token');
+    let currentUser = null;
+    let requestsChart = null;
+
+    async function api(path, options = {}) {
+      const headers = { 'Content-Type': 'application/json', ...options.headers };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(API_BASE + path, { ...options, headers });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    function showPage(name) {
+      document.querySelectorAll('[id^="page-"]').forEach(p => p.classList.add('hidden'));
+      document.getElementById('page-' + name).classList.remove('hidden');
+      document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
+      document.querySelector('[data-page="' + name + '"]').classList.add('active');
+      
+      if (name === 'overview') loadOverview();
+      if (name === 'keys') loadKeys();
+      if (name === 'usage') loadUsage();
+    }
+
+    async function loadOverview() {
+      try {
+        const [current, summary, timeseries, keys] = await Promise.all([
+          api('/usage/current'),
+          api('/usage/summary'),
+          api('/usage/timeseries?metric=requests'),
+          api('/keys')
+        ]);
+
+        document.getElementById('stat-requests').textContent = current.used.toLocaleString();
+        document.getElementById('stat-limit').textContent = 'of ' + current.limit.toLocaleString() + ' limit';
+        
+        const successRate = summary.totalRequests > 0 
+          ? Math.round(((summary.totalRequests - summary.totalErrors) / summary.totalRequests) * 100) 
+          : 100;
+        document.getElementById('stat-success').textContent = successRate + '%';
+        document.getElementById('stat-latency').textContent = summary.avgLatencyMs || '-';
+        document.getElementById('stat-keys').textContent = keys.keys.filter(k => k.status === 'active').length;
+
+        if (requestsChart) requestsChart.destroy();
+        const ctx = document.getElementById('requests-chart').getContext('2d');
+        requestsChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: timeseries.data.map(d => d.timestamp.slice(5)),
+            datasets: [{
+              label: 'Requests',
+              data: timeseries.data.map(d => d.value),
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              fill: true,
+              tension: 0.3,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#71717a' } },
+              y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#71717a' }, beginAtZero: true }
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Failed to load overview:', err);
+      }
+    }
+
+    async function loadKeys() {
+      try {
+        const { keys } = await api('/keys');
+        const list = document.getElementById('keys-list');
+        
+        if (keys.length === 0) {
+          list.innerHTML = '<div style="text-align: center; color: var(--gray-500); padding: 24px;">No API keys yet. Create one to get started.</div>';
+          return;
+        }
+
+        list.innerHTML = keys.map(k => \`
+          <div class="key-item">
+            <div class="key-info">
+              <div class="key-name">\${k.name} <span class="status-badge status-\${k.status}">\${k.status}</span></div>
+              <div class="key-prefix">\${k.prefix}</div>
+              <div class="key-meta">Created \${new Date(k.created).toLocaleDateString()}\${k.lastUsedAt ? ' · Last used ' + new Date(k.lastUsedAt).toLocaleDateString() : ''}</div>
+            </div>
+            <div class="key-actions">
+              \${k.status === 'active' ? '<button class="btn btn-danger" onclick="revokeKey(\\'' + k.id + '\\')">Revoke</button>' : ''}
+            </div>
+          </div>
+        \`).join('');
+      } catch (err) {
+        console.error('Failed to load keys:', err);
+      }
+    }
+
+    async function loadUsage() {
+      try {
+        const summary = await api('/usage/summary');
+        const tbody = document.getElementById('usage-table-body');
+        const ops = Object.entries(summary.byOperation);
+        
+        if (ops.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--gray-500); padding: 24px;">No usage data yet.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = ops.map(([op, stats]) => \`
+          <tr>
+            <td>\${op}</td>
+            <td>\${stats.requests.toLocaleString()}</td>
+            <td>\${stats.errors.toLocaleString()}</td>
+            <td>\${stats.avgLatencyMs}ms</td>
+          </tr>
+        \`).join('');
+      } catch (err) {
+        console.error('Failed to load usage:', err);
+      }
+    }
+
+    async function revokeKey(id) {
+      if (!confirm('Are you sure you want to revoke this key? This cannot be undone.')) return;
+      try {
+        await api('/keys/' + id, { method: 'PATCH', body: JSON.stringify({ status: 'revoked' }) });
+        loadKeys();
+      } catch (err) {
+        alert('Failed to revoke key: ' + err.message);
+      }
+    }
+
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+      item.addEventListener('click', () => showPage(item.dataset.page));
+    });
+
+    document.getElementById('create-key-btn').addEventListener('click', () => {
+      document.getElementById('create-key-modal').classList.add('show');
+    });
+
+    document.getElementById('cancel-create-key').addEventListener('click', () => {
+      document.getElementById('create-key-modal').classList.remove('show');
+    });
+
+    document.getElementById('create-key-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('key-name').value;
+      try {
+        const result = await api('/keys', { method: 'POST', body: JSON.stringify({ name }) });
+        document.getElementById('create-key-modal').classList.remove('show');
+        document.getElementById('new-key-value').textContent = result.key;
+        document.getElementById('new-key-modal').classList.add('show');
+        document.getElementById('key-name').value = '';
+      } catch (err) {
+        alert('Failed to create key: ' + err.message);
+      }
+    });
+
+    document.getElementById('copy-key-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('new-key-value').textContent);
+      document.getElementById('copy-key-btn').textContent = 'Copied!';
+      setTimeout(() => document.getElementById('copy-key-btn').textContent = 'Copy', 2000);
+    });
+
+    document.getElementById('close-new-key-modal').addEventListener('click', () => {
+      document.getElementById('new-key-modal').classList.remove('show');
+      loadKeys();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      token = null;
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('auth-page').classList.remove('hidden');
+    });
+
+    let isSignUp = false;
+    document.getElementById('auth-toggle').addEventListener('click', (e) => {
+      e.preventDefault();
+      isSignUp = !isSignUp;
+      document.getElementById('auth-subtitle').textContent = isSignUp ? 'Create your account' : 'Sign in to your account';
+      document.getElementById('auth-submit').textContent = isSignUp ? 'Sign Up' : 'Sign In';
+      document.getElementById('auth-toggle-text').textContent = isSignUp ? 'Already have an account?' : "Don't have an account?";
+      document.getElementById('auth-toggle').textContent = isSignUp ? 'Sign in' : 'Sign up';
+      document.getElementById('name-group').classList.toggle('hidden', !isSignUp);
+    });
+
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const name = document.getElementById('name').value;
+      const errorEl = document.getElementById('auth-error');
+
+      try {
+        if (isSignUp) {
+          await api('/auth/signup', { method: 'POST', body: JSON.stringify({ email, password, name }) });
+          alert('Account created! Please sign in.');
+          document.getElementById('auth-toggle').click();
+        } else {
+          const result = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+          token = result.token;
+          localStorage.setItem('token', token);
+          currentUser = result.user;
+          document.getElementById('auth-page').classList.add('hidden');
+          document.getElementById('app').classList.remove('hidden');
+          showPage('overview');
+        }
+        errorEl.classList.remove('show');
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.add('show');
+      }
+    });
+
+    if (token) {
+      api('/auth/me')
+        .then(user => {
+          currentUser = user;
+          document.getElementById('auth-page').classList.add('hidden');
+          document.getElementById('app').classList.remove('hidden');
+          showPage('overview');
+        })
+        .catch(() => {
+          localStorage.removeItem('token');
+          token = null;
+        });
+    }
+  </script>
+</body>
+</html>`;
+}
+
 export function createServer(config: Config) {
   const app = express();
   const router = new OperationRouter(config);
+  const authEnabled = config.auth?.enabled ?? false;
+
+  if (authEnabled && config.auth?.pocketbase) {
+    initPocketBase({
+      url: config.auth.pocketbase.url,
+      adminEmail: config.auth.pocketbase.admin_email,
+      adminPassword: config.auth.pocketbase.admin_password,
+    });
+  }
 
   app.use(cors());
   app.use(express.json({ limit: '50mb' }));
@@ -870,13 +1603,23 @@ export function createServer(config: Config) {
     res.type('html').send(getDocsHtml());
   });
 
+  if (authEnabled) {
+    app.get('/dashboard', (_req: Request, res: Response) => {
+      res.type('html').send(getDashboardHtml());
+    });
+
+    app.use('/api/auth', createAuthRoutes());
+    app.use('/api/keys', createApiKeysRoutes());
+    app.use('/api/usage', createUsageRoutes());
+  }
+
   app.get('/api/openapi.json', (_req: Request, res: Response) => {
     const openApiSpec = generateOpenAPISpec(config);
     res.json(openApiSpec);
   });
 
   app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok' });
+    res.json({ status: 'ok', auth: authEnabled });
   });
 
   app.get('/api/operations', (_req: Request, res: Response) => {
@@ -888,9 +1631,10 @@ export function createServer(config: Config) {
     });
   });
 
-  app.post('/api/v1/:operation', async (req: Request, res: Response) => {
+  const operationHandler = async (req: Request, res: Response) => {
     const { operation } = req.params;
     const { image, options } = req.body;
+    const startTime = Date.now();
 
     if (!image) {
       res.status(400).json({ error: 'Image is required' });
@@ -916,18 +1660,50 @@ export function createServer(config: Config) {
         options,
       });
 
+      const latencyMs = Date.now() - startTime;
       const base64Result = result.image.toString('base64');
+
+      if (authEnabled && req.auth) {
+        logUsage({
+          userId: req.auth.user.id,
+          apiKeyId: req.auth.apiKey.id,
+          operation,
+          status: 'success',
+          latencyMs,
+          requestId: req.auth.requestId,
+        }).catch(console.error);
+      }
 
       res.json({
         image: `data:${result.mimeType};base64,${base64Result}`,
         metadata: result.metadata,
       });
     } catch (error) {
+      const latencyMs = Date.now() - startTime;
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error(`Operation ${operation} failed:`, message);
+
+      if (authEnabled && req.auth) {
+        logUsage({
+          userId: req.auth.user.id,
+          apiKeyId: req.auth.apiKey.id,
+          operation,
+          status: 'error',
+          latencyMs,
+          requestId: req.auth.requestId,
+          errorMessage: message,
+        }).catch(console.error);
+      }
+
       res.status(500).json({ error: message });
     }
-  });
+  };
+
+  if (authEnabled) {
+    app.post('/api/v1/:operation', requireApiKey(), operationHandler);
+  } else {
+    app.post('/api/v1/:operation', operationHandler);
+  }
 
   return app;
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createServer } from './index.js';
 import type { Config } from '../config/schema.js';
@@ -24,6 +24,7 @@ vi.mock('../router/index.js', () => {
 describe('Server', () => {
   const createConfig = (): Config => ({
     server: { port: 3000, host: '0.0.0.0' },
+    auth: { enabled: false },
     operations: {
       'background-remove': { provider: 'replicate' },
     },
@@ -39,7 +40,7 @@ describe('Server', () => {
       const response = await request(app).get('/api/health');
       
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'ok' });
+      expect(response.body).toEqual({ status: 'ok', auth: false });
     });
   });
 
