@@ -47,19 +47,22 @@ providers:
 
 ## API Endpoints
 
-### Health Check
+### Homepage & Documentation
 ```
-GET /health
+GET /          # HTML homepage with API overview
+GET /docs      # Interactive API documentation (Redoc)
 ```
 
-### List Operations
+### System Endpoints
 ```
-GET /operations
+GET /api/health        # Health check
+GET /api/operations    # List available operations
+GET /api/openapi.json  # OpenAPI specification
 ```
 
 ### Execute Operation
 ```
-POST /v1/:operation
+POST /api/v1/:operation
 
 Body:
 {

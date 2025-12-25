@@ -11,6 +11,8 @@ operations:
     provider: replicate
   inpaint:
     provider: replicate
+  restore:
+    provider: replicate
 
 providers:
   replicate:

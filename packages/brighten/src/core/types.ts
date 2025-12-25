@@ -268,9 +268,12 @@ export type BlendMode =
 
 export type ToolType = 
   | 'select'
+  | 'ai'
   | 'crop'
   | 'rotate'
   | 'transform'
+  | 'filter'
+  | 'adjust'
   | 'brush'
   | 'eraser'
   | 'blur-brush'
@@ -278,6 +281,7 @@ export type ToolType =
   | 'shape'
   | 'sticker'
   | 'focus'
+  | 'layers'
   | 'hand'
   | 'zoom';
 

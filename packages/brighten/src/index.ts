@@ -68,7 +68,7 @@ export { PluginManager } from './plugins';
 export type { Plugin, PluginFactory, PluginContext, HookCallback } from './plugins';
 
 export { EditorUI } from './ui';
-export type { EditorUIConfig } from './ui';
+export type { EditorUIConfig, EditorUIStyles } from './ui';
 
 import { Editor } from './core';
 import { EditorUI } from './ui';

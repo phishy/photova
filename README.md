@@ -6,6 +6,8 @@
 
 Brighten is a powerful, extensible JavaScript/TypeScript photo editor SDK for the web. It provides a drop-in UI component and a comprehensive programmatic API for image manipulation.
 
+**[Documentation](https://phishy.github.io/brighten/)** | **[Live Demo](https://phishy.github.io/brighten/demo/)** | **[API Reference](https://phishy.github.io/brighten/api/editor-ui/)**
+
 ![Brighten Screenshot](packages/brighten/screenshot.png)
 
 ## Features

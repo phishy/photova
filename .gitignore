@@ -4,7 +4,10 @@ node_modules/
 # Build output
 dist/
 dist-pages/
-docs/
+output/
+output-ghpages/
+site/
+packages/brighten/docs/
 
 # IDE
 .idea/

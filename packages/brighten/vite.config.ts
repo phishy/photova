@@ -36,16 +36,16 @@ export default defineConfig(({ mode }) => {
     };
   }
 
+  const isGitHubPagesBuild = process.env.NODE_ENV === 'production';
+  
   return {
-    base: '/brighten/',
+    base: isGitHubPagesBuild ? '/brighten/demo/' : '/',
     build: {
       outDir: 'dist-pages',
       sourcemap: true,
       rollupOptions: {
         input: {
           main: resolve(__dirname, 'index.html'),
-          docs: resolve(__dirname, 'docs.html'),
-          'api-docs': resolve(__dirname, 'api-docs.html'),
         },
       },
     },

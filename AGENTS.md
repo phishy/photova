@@ -215,8 +215,12 @@ Routes operations to configured providers with fallback support.
 
 ### Server (`src/server/index.ts`)
 Express server with endpoints:
-- `POST /v1/:operation` - Execute an operation (e.g., `/v1/background-remove`)
-- `GET /health` - Health check
+- `GET /` - HTML homepage with API overview
+- `GET /docs` - Interactive API documentation (Redoc)
+- `GET /api/health` - Health check
+- `GET /api/operations` - List available operations
+- `GET /api/openapi.json` - OpenAPI spec
+- `POST /api/v1/:operation` - Execute an operation (e.g., `/api/v1/background-remove`)
 
 ## Configuration
 
@@ -288,7 +292,7 @@ npm run build --workspace=packages/brighten-api
 
 ### Request
 ```json
-POST /v1/background-remove
+POST /api/v1/background-remove
 {
   "image": "data:image/png;base64,..."
 }

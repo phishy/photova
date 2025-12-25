@@ -8,7 +8,8 @@ export type OperationType =
   | 'face-restore'
   | 'style-transfer'
   | 'inpaint'
-  | 'outpaint';
+  | 'outpaint'
+  | 'restore';
 
 export interface OperationInput {
   image: Buffer;

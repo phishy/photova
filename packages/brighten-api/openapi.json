@@ -30,7 +30,7 @@
     }
   ],
   "paths": {
-    "/health": {
+    "/api/health": {
       "get": {
         "summary": "Health check",
         "description": "Returns the health status of the API. Use this endpoint to verify the server is running.",
@@ -58,7 +58,7 @@
         }
       }
     },
-    "/operations": {
+    "/api/operations": {
       "get": {
         "summary": "List available operations",
         "description": "Returns a list of all configured operations and their assigned providers. Only operations configured in your `config.yaml` will be available.",
@@ -110,7 +110,7 @@
         }
       }
     },
-    "/v1/background-remove": {
+    "/api/v1/background-remove": {
       "post": {
         "summary": "Background Remove",
         "description": "Remove the background from an image, leaving only the foreground subject with transparency.",
@@ -172,7 +172,7 @@
         }
       }
     },
-    "/v1/unblur": {
+    "/api/v1/unblur": {
       "post": {
         "summary": "Unblur",
         "description": "Enhance and sharpen a blurry image using AI upscaling with face enhancement.",
@@ -234,7 +234,7 @@
         }
       }
     },
-    "/v1/colorize": {
+    "/api/v1/colorize": {
       "post": {
         "summary": "Colorize",
         "description": "Add color to black and white images using DeOldify.",
@@ -296,11 +296,73 @@
         }
       }
     },
-    "/v1/inpaint": {
+    "/api/v1/inpaint": {
       "post": {
         "summary": "Inpaint",
         "description": "Remove objects from an image by painting a mask over areas to fill. Requires a `mask` parameter in options (base64 image where white = areas to remove).",
         "operationId": "inpaint",
+        "tags": [
+          "Operations"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageInput"
+              },
+              "example": {
+                "image": "data:image/png;base64,iVBORw0KGgo...",
+                "options": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageOutput"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - missing or invalid image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Image is required"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error - operation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Provider timeout after 30000ms"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/restore": {
+      "post": {
+        "summary": "Restore",
+        "description": "Restore old or damaged photos using FLUX Kontext. Fixes scratches, damage, and can colorize old photos.",
+        "operationId": "restore",
         "tags": [
           "Operations"
         ],

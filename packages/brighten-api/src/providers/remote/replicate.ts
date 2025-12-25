@@ -3,7 +3,8 @@ import type { OperationType, OperationInput, OperationResult } from '../../opera
 import type { ProviderConfig } from '../../config/schema.js';
 
 interface ModelConfig {
-  version: string;
+  version?: string;
+  model?: string;
   inputKey: string;
   maskKey?: string;
   defaultOptions?: Record<string, unknown>;
@@ -16,6 +17,7 @@ const REPLICATE_MODELS: Record<string, ModelConfig> = {
   'face-restore': { version: 'f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa', inputKey: 'image', defaultOptions: { scale: 2, face_enhance: true } },
   'colorize': { version: '0da600fab0c45a66211339f1c16b71345d22f26ef5fea3dca1bb90bb5711e950', inputKey: 'input_image', defaultOptions: { model_name: 'Artistic', render_factor: 35 } },
   'inpaint': { version: '40e67426e1bf78199d78b36580389fbbdcb4c9cdc2bc2b489e99d713f167b3c5', inputKey: 'image', maskKey: 'mask' },
+  'restore': { model: 'flux-kontext-apps/restore-image', inputKey: 'input_image' },
 };
 
 export class ReplicateProvider extends BaseProvider {
@@ -27,6 +29,7 @@ export class ReplicateProvider extends BaseProvider {
     'face-restore',
     'colorize',
     'inpaint',
+    'restore',
   ];
 
   private apiKey: string;
@@ -67,16 +70,21 @@ export class ReplicateProvider extends BaseProvider {
       }
     }
 
-    const response = await fetch('https://api.replicate.com/v1/predictions', {
+    const endpoint = modelConfig.model 
+      ? `https://api.replicate.com/v1/models/${modelConfig.model}/predictions`
+      : 'https://api.replicate.com/v1/predictions';
+
+    const requestBody = modelConfig.model
+      ? { input: modelInput }
+      : { version: modelConfig.version, input: modelInput };
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${this.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        version: modelConfig.version,
-        input: modelInput,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -96,13 +104,13 @@ export class ReplicateProvider extends BaseProvider {
       mimeType: 'image/png',
       metadata: {
         provider: this.name,
-        model: modelConfig.version,
+        model: modelConfig.model || modelConfig.version,
         processingTime: Date.now() - startTime,
       },
     };
   }
 
-  private async pollForResult(predictionId: string, maxAttempts = 60): Promise<{ output: string | string[] }> {
+  private async pollForResult(predictionId: string, maxAttempts = 120): Promise<{ output: string | string[] }> {
     for (let i = 0; i < maxAttempts; i++) {
       const response = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
         headers: { 'Authorization': `Token ${this.apiKey}` },

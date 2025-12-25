@@ -13,6 +13,7 @@ const ALL_OPERATIONS = [
   'unblur',
   'colorize',
   'inpaint',
+  'restore',
 ] as const;
 
 function formatOperationName(op: string): string {
@@ -28,6 +29,7 @@ function getOperationDescription(op: string): string {
     'unblur': 'Enhance and sharpen a blurry image using AI upscaling with face enhancement.',
     'colorize': 'Add color to black and white images using DeOldify.',
     'inpaint': 'Remove objects from an image by painting a mask over areas to fill. Requires a `mask` parameter in options (base64 image where white = areas to remove).',
+    'restore': 'Restore old or damaged photos using FLUX Kontext. Fixes scratches, damage, and can colorize old photos.',
   };
   return descriptions[op] || `Perform ${formatOperationName(op)} operation on an image.`;
 }
@@ -83,7 +85,7 @@ See the [GitHub repository](https://github.com/phishy/brighten/tree/main/package
       },
     ],
     paths: {
-      '/health': {
+      '/api/health': {
         get: {
           summary: 'Health check',
           description: 'Returns the health status of the API. Use this endpoint to verify the server is running.',
@@ -106,7 +108,7 @@ See the [GitHub repository](https://github.com/phishy/brighten/tree/main/package
           },
         },
       },
-      '/operations': {
+      '/api/operations': {
         get: {
           summary: 'List available operations',
           description: 'Returns a list of all configured operations and their assigned providers. Only operations configured in your `config.yaml` will be available.',
@@ -146,7 +148,7 @@ See the [GitHub repository](https://github.com/phishy/brighten/tree/main/package
       },
       ...Object.fromEntries(
         ALL_OPERATIONS.map((op) => [
-          `/v1/${op}`,
+          `/api/v1/${op}`,
           {
             post: {
               summary: formatOperationName(op),

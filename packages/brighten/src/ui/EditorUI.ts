@@ -1,8 +1,24 @@
 import { Editor } from '../core/Editor';
 import { FilterEngine } from '../filters/FilterEngine';
-import type { ToolType, FilterPreset, Layer, ImageLayer, Rectangle } from '../core/types';
+import { BrushTool } from '../tools/BrushTool';
+import type { ToolType, FilterPreset, Layer, ImageLayer, Rectangle, Point } from '../core/types';
 import { injectStyles } from './styles';
 import { icons } from './icons';
+
+export interface EditorUIStyles {
+  background?: string;
+  surface?: string;
+  surfaceHover?: string;
+  border?: string;
+  text?: string;
+  textSecondary?: string;
+  primary?: string;
+  primaryHover?: string;
+  danger?: string;
+  success?: string;
+  radius?: string;
+  fontFamily?: string;
+}
 
 export interface EditorUIConfig {
   container: HTMLElement | string;
@@ -13,13 +29,15 @@ export interface EditorUIConfig {
   showSidebar?: boolean;
   showPanel?: boolean;
   apiEndpoint?: string;
+  styles?: EditorUIStyles;
+  unstyled?: boolean;
   onExport?: (blob: Blob) => void;
   onClose?: () => void;
 }
 
 type PanelType = 'filters' | 'adjust' | 'layers' | 'text' | 'shapes' | 'crop' | 'transform' | 'brush' | 'ai' | null;
 
-const DEFAULT_TOOLS: ToolType[] = ['select', 'crop', 'transform', 'brush', 'text', 'shape'];
+const DEFAULT_TOOLS: ToolType[] = ['select', 'ai', 'crop', 'transform', 'filter', 'adjust', 'brush', 'text', 'shape', 'layers'];
 
 export class EditorUI {
   private config: EditorUIConfig;
@@ -62,7 +80,10 @@ export class EditorUI {
   private maskCtx: CanvasRenderingContext2D | null = null;
   private maskOverlay: HTMLDivElement | null = null;
   private inpaintDrawState: { drawing: boolean; lastX: number; lastY: number } = { drawing: false, lastX: 0, lastY: 0 };
-  private inpaintBrushSize = 30;
+  private inpaintBrushSize = 60;
+  private brushTool: BrushTool | null = null;
+  private brushMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
+  private brushMouseUpHandler: (() => void) | null = null;
 
   constructor(config: EditorUIConfig) {
     this.config = {
@@ -77,13 +98,17 @@ export class EditorUI {
     this.container = this.resolveContainer(config.container);
     this.filterEngine = new FilterEngine();
 
-    injectStyles();
+    if (!config.unstyled) {
+      injectStyles();
+    }
     this.root = this.createRoot();
+    this.applyCustomStyles();
     this.container.appendChild(this.root);
 
     const canvasContainer = this.root.querySelector('.brighten-canvas-container') as HTMLElement;
     this.editor = new Editor({ container: canvasContainer });
 
+    this.initializeBrushTool(canvasContainer);
     this.setupEventListeners();
     this.resetAdjustments();
 
@@ -99,6 +124,32 @@ export class EditorUI {
       return el as HTMLElement;
     }
     return container;
+  }
+
+  private applyCustomStyles(): void {
+    const styles = this.config.styles;
+    if (!styles) return;
+
+    const varMap: Record<keyof EditorUIStyles, string> = {
+      background: '--brighten-bg',
+      surface: '--brighten-surface',
+      surfaceHover: '--brighten-surface-hover',
+      border: '--brighten-border',
+      text: '--brighten-text',
+      textSecondary: '--brighten-text-secondary',
+      primary: '--brighten-primary',
+      primaryHover: '--brighten-primary-hover',
+      danger: '--brighten-danger',
+      success: '--brighten-success',
+      radius: '--brighten-radius',
+      fontFamily: 'font-family',
+    };
+
+    for (const [key, value] of Object.entries(styles)) {
+      if (value && varMap[key as keyof EditorUIStyles]) {
+        this.root.style.setProperty(varMap[key as keyof EditorUIStyles], value);
+      }
+    }
   }
 
   private createRoot(): HTMLElement {
@@ -153,7 +204,7 @@ export class EditorUI {
   }
 
   private renderSidebar(): string {
-    const tools = [
+    const allTools = [
       { type: 'select', icon: 'select', label: 'Select' },
       { type: 'ai', icon: 'sparkles', label: 'AI', panel: 'ai' },
       { type: 'crop', icon: 'crop', label: 'Crop', panel: 'crop' },
@@ -165,6 +216,9 @@ export class EditorUI {
       { type: 'shape', icon: 'shapes', label: 'Shapes', panel: 'shapes' },
       { type: 'layers', icon: 'layers', label: 'Layers', panel: 'layers' },
     ];
+
+    const enabledTools = this.config.tools || DEFAULT_TOOLS;
+    const tools = allTools.filter(tool => enabledTools.includes(tool.type as ToolType));
 
     return `
       <aside class="brighten-sidebar">
@@ -487,6 +541,9 @@ export class EditorUI {
             <button class="brighten-btn" data-action="colorize" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.palette}</span> Colorize
             </button>
+            <button class="brighten-btn" data-action="restore" style="width: 100%; justify-content: flex-start;">
+              <span style="${iconStyle}">${icons.magic}</span> Restore Photo
+            </button>
             <button class="brighten-btn" data-action="start-inpaint" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.eraser}</span> Remove Objects
             </button>
@@ -692,6 +749,153 @@ export class EditorUI {
       const currentZoom = this.editor.getZoom();
       this.editor.setZoom(currentZoom * zoomFactor);
     }, { passive: false });
+
+    canvasContainer.addEventListener('dblclick', (e: MouseEvent) => {
+      const point = this.getCanvasPoint(e, canvasContainer);
+      const textLayer = this.findTextLayerAtPoint(point);
+      if (textLayer) {
+        this.startTextEdit(textLayer);
+      }
+    });
+  }
+
+  private findTextLayerAtPoint(point: Point): import('../core/types').TextLayer | null {
+    const layers = this.editor.getLayerManager().getLayers();
+    const ctx = document.createElement('canvas').getContext('2d')!;
+    
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const layer = layers[i];
+      if (layer.type !== 'text' || !layer.visible) continue;
+      
+      const textLayer = layer as import('../core/types').TextLayer;
+      ctx.font = `${textLayer.fontStyle} ${textLayer.fontWeight} ${textLayer.fontSize}px ${textLayer.fontFamily}`;
+      const metrics = ctx.measureText(textLayer.text);
+      const textWidth = metrics.width;
+      const textHeight = textLayer.fontSize * textLayer.lineHeight;
+      
+      const transform = textLayer.transform;
+      const x = transform.x;
+      const y = transform.y;
+      
+      if (point.x >= x && point.x <= x + textWidth &&
+          point.y >= y - textHeight && point.y <= y) {
+        return textLayer;
+      }
+    }
+    return null;
+  }
+
+  private startTextEdit(layer: import('../core/types').TextLayer): void {
+    const canvasContainer = this.root.querySelector('.brighten-canvas-container') as HTMLElement;
+    if (!canvasContainer) return;
+
+    const zoom = this.editor.getZoom();
+    const pan = this.editor.getPan();
+    
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = layer.text;
+    input.style.cssText = `
+      position: absolute;
+      left: ${layer.transform.x * zoom + pan.x}px;
+      top: ${(layer.transform.y - layer.fontSize) * zoom + pan.y}px;
+      font-family: ${layer.fontFamily};
+      font-size: ${layer.fontSize * zoom}px;
+      font-weight: ${layer.fontWeight};
+      font-style: ${layer.fontStyle};
+      color: ${layer.color};
+      background: transparent;
+      border: 1px dashed rgba(255,255,255,0.5);
+      outline: none;
+      padding: 2px 4px;
+      min-width: 100px;
+      z-index: 1000;
+    `;
+
+    const finishEdit = () => {
+      const newText = input.value.trim() || layer.text;
+      if (newText !== layer.text) {
+        this.editor.getLayerManager().updateLayer(layer.id, { text: newText });
+        this.editor.saveToHistory('Edit text');
+      }
+      input.remove();
+    };
+
+    input.addEventListener('blur', finishEdit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finishEdit();
+      } else if (e.key === 'Escape') {
+        input.value = layer.text;
+        input.blur();
+      }
+    });
+
+    canvasContainer.appendChild(input);
+    input.focus();
+    input.select();
+  }
+
+  private initializeBrushTool(canvasContainer: HTMLElement): void {
+    const canvas = canvasContainer.querySelector('canvas');
+    if (!canvas) return;
+
+    this.brushTool = new BrushTool();
+    this.brushTool.attach({ editor: this.editor, canvas });
+    this.brushTool.setOptions({
+      color: this.brushOptions.color,
+      size: this.brushOptions.size,
+      opacity: this.brushOptions.opacity / 100,
+    });
+
+    canvasContainer.addEventListener('mousedown', (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      if (this.currentTool !== 'brush') return;
+      if (!this.brushTool) return;
+
+      const point = this.getCanvasPoint(e, canvasContainer);
+      this.brushTool.activate();
+      this.brushTool.onPointerDown(point, e as unknown as PointerEvent);
+      canvasContainer.style.cursor = 'crosshair';
+
+      this.brushMouseMoveHandler = (moveEvent: MouseEvent) => {
+        if (!this.brushTool) return;
+        const movePoint = this.getCanvasPoint(moveEvent, canvasContainer);
+        this.brushTool.onPointerMove(movePoint, moveEvent as unknown as PointerEvent);
+      };
+
+      this.brushMouseUpHandler = () => {
+        if (!this.brushTool) return;
+        this.brushTool.onPointerUp({ x: 0, y: 0 }, new PointerEvent('pointerup'));
+        this.brushTool.deactivate();
+        canvasContainer.style.cursor = 'crosshair';
+
+        if (this.brushMouseMoveHandler) {
+          document.removeEventListener('mousemove', this.brushMouseMoveHandler);
+        }
+        if (this.brushMouseUpHandler) {
+          document.removeEventListener('mouseup', this.brushMouseUpHandler);
+        }
+      };
+
+      document.addEventListener('mousemove', this.brushMouseMoveHandler);
+      document.addEventListener('mouseup', this.brushMouseUpHandler);
+    });
+  }
+
+  private getCanvasPoint(e: MouseEvent, canvasContainer: HTMLElement): Point {
+    const rect = canvasContainer.getBoundingClientRect();
+    const zoom = this.editor.getZoom();
+    const pan = this.editor.getPan();
+    
+    const containerX = e.clientX - rect.left;
+    const containerY = e.clientY - rect.top;
+    
+    const x = (containerX - pan.x) / zoom;
+    const y = (containerY - pan.y) / zoom;
+    
+    return { x, y };
   }
 
   private handleKeyboard(e: KeyboardEvent): void {
@@ -841,6 +1045,9 @@ export class EditorUI {
         case 'colorize':
           this.colorize();
           break;
+        case 'restore':
+          this.restore();
+          break;
         case 'start-inpaint':
           this.startInpaintMode();
           break;
@@ -891,6 +1098,7 @@ export class EditorUI {
         const valueEl = this.root.querySelector('[data-value="brushOpacity"]');
         if (valueEl) valueEl.textContent = `${this.brushOptions.opacity}%`;
       }
+      this.updateBrushToolOptions();
       this.refreshBrushPreview();
     }
 
@@ -906,6 +1114,15 @@ export class EditorUI {
     this.showPanel('brush');
   }
 
+  private updateBrushToolOptions(): void {
+    if (!this.brushTool) return;
+    this.brushTool.setOptions({
+      color: this.brushOptions.color,
+      size: this.brushOptions.size,
+      opacity: this.brushOptions.opacity / 100,
+    });
+  }
+
   private setTool(tool: ToolType): void {
     if (this.currentTool === 'crop' && tool !== 'crop') {
       this.removeCropOverlay();
@@ -918,6 +1135,11 @@ export class EditorUI {
     this.root.querySelectorAll('.brighten-tool-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.getAttribute('data-tool') === tool);
     });
+
+    const canvasContainer = this.root.querySelector('.brighten-canvas-container') as HTMLElement;
+    if (canvasContainer) {
+      canvasContainer.style.cursor = tool === 'brush' ? 'crosshair' : 'grab';
+    }
   }
 
   private resetAdjustments(): void {
@@ -1467,7 +1689,7 @@ export class EditorUI {
     }
 
     try {
-      const response = await fetch(`${this.config.apiEndpoint}/v1/background-remove`, {
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/background-remove`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image }),
@@ -1532,7 +1754,7 @@ export class EditorUI {
     }
 
     try {
-      const response = await fetch(`${this.config.apiEndpoint}/v1/unblur`, {
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/unblur`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image }),
@@ -1606,7 +1828,7 @@ export class EditorUI {
     }
 
     try {
-      const response = await fetch(`${this.config.apiEndpoint}/v1/colorize`, {
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/colorize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image }),
@@ -1643,6 +1865,76 @@ export class EditorUI {
       console.error('Colorize failed:', error);
       resetButton();
       alert(error instanceof Error ? error.message : 'Colorize failed');
+    }
+  }
+
+  private async restore(): Promise<void> {
+    if (!this.config.apiEndpoint) return;
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image') as ImageLayer | undefined;
+    if (!imageLayer) return;
+
+    const btn = this.root.querySelector('[data-action="restore"]') as HTMLButtonElement;
+    const resetButton = () => {
+      this.setAiProcessing(false);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `${icons.magic} Restore Photo`;
+      }
+    };
+
+    this.setAiProcessing(true);
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${icons.magic} Processing...`;
+    }
+
+    try {
+
+      const source = imageLayer.source;
+      const canvas = document.createElement('canvas');
+      const originalWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+      const originalHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+      canvas.width = originalWidth;
+      canvas.height = originalHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(source, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to restore image');
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = originalWidth;
+        resizedCanvas.height = originalHeight;
+        const resizedCtx = resizedCanvas.getContext('2d')!;
+        resizedCtx.drawImage(img, 0, 0, originalWidth, originalHeight);
+        
+        this.editor.getLayerManager().updateLayer(imageLayer.id, { source: resizedCanvas });
+        this.editor.saveToHistory('Restore image');
+        this.originalImageData = null;
+        resetButton();
+      };
+      img.onerror = () => {
+        resetButton();
+        alert('Failed to load restored image');
+      };
+      img.src = result.image;
+    } catch (error) {
+      console.error('Restore failed:', error);
+      resetButton();
+      alert(error instanceof Error ? error.message : 'Restore failed');
     }
   }
 
@@ -1872,8 +2164,7 @@ export class EditorUI {
 
     const updateCursorPreview = (e: MouseEvent) => {
       const rect = this.maskOverlay!.getBoundingClientRect();
-      const scaleX = rect.width / this.maskCanvas!.width;
-      const displaySize = this.inpaintBrushSize * scaleX;
+      const displaySize = this.inpaintBrushSize;
       const padding = 4;
       const canvasSize = displaySize + padding * 2;
       
@@ -1988,7 +2279,7 @@ export class EditorUI {
     if (cancelBtn) cancelBtn.disabled = true;
 
     try {
-      const response = await fetch(`${this.config.apiEndpoint}/v1/inpaint`, {
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/inpaint`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64Image, options: { mask: base64Mask } }),
