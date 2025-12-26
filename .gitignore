@@ -8,6 +8,7 @@ output/
 output-ghpages/
 site/
 packages/brighten/docs/
+.next/
 
 # IDE
 .idea/

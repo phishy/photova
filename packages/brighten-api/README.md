@@ -170,6 +170,44 @@ PocketBase admin UI: http://127.0.0.1:8090/_/
 | `POCKETBASE_ADMIN_EMAIL` | PocketBase admin email |
 | `POCKETBASE_ADMIN_PASSWORD` | PocketBase admin password |
 
+## Docker Deployment
+
+The Dockerfile bundles both the Next.js API and PocketBase in a single container.
+
+### Build from monorepo root:
+```bash
+docker build -f packages/brighten-api/Dockerfile -t brighten-api .
+```
+
+### Run locally:
+```bash
+docker run -p 3001:3001 -p 8090:8090 \
+  -e REPLICATE_API_KEY=your_key \
+  -e POCKETBASE_ADMIN_EMAIL=admin@example.com \
+  -e POCKETBASE_ADMIN_PASSWORD=your_password \
+  -v brighten-pb-data:/app/pb_data \
+  brighten-api
+```
+
+### Coolify Deployment
+
+1. Create a new service from Git repository
+2. Set build context to repository root
+3. Set Dockerfile path: `packages/brighten-api/Dockerfile`
+4. Add environment variables:
+   - `REPLICATE_API_KEY`
+   - `POCKETBASE_ADMIN_EMAIL` 
+   - `POCKETBASE_ADMIN_PASSWORD`
+5. Expose port 3001
+6. Add persistent storage mounted to `/app/pb_data`
+
+### Ports
+
+| Port | Service |
+|------|---------|
+| 3001 | Next.js API |
+| 8090 | PocketBase (internal, also exposed for admin access) |
+
 ## License
 
 BSL-1.1 - See [LICENSE](../../LICENSE)

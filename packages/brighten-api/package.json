@@ -1,50 +1,28 @@
 {
   "name": "brighten-api",
   "version": "0.1.0",
-  "description": "Unified media processing API with configurable backends",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "private": true,
   "scripts": {
-    "setup": "tsx scripts/setup.ts",
-    "dev": "tsx watch src/index.ts",
-    "dev:pocketbase": "./pocketbase serve --dir=./pb_data",
-    "dev:all": "npm run dev:pocketbase & npm run dev",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "vitest",
-    "lint": "eslint src --ext .ts",
-    "generate:openapi": "tsx scripts/generate-openapi.ts"
+    "dev": "next dev -p 3001",
+    "dev:pocketbase": "./pocketbase serve --http=127.0.0.1:8090 --dir=./pb_data --migrationsDir=./pb_migrations",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint"
   },
-  "keywords": [
-    "media-processing",
-    "api",
-    "image-processing",
-    "video-processing",
-    "background-removal",
-    "upscaling",
-    "ai"
-  ],
-  "license": "BUSL-1.1",
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^4.18.2",
-    "nanoid": "^5.1.6",
+    "brighten": "file:../brighten",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
     "pocketbase": "^0.26.5",
+    "nanoid": "^5.1.6",
     "yaml": "^2.3.4",
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
-    "@types/supertest": "^6.0.3",
-    "supertest": "^7.1.4",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.3.0"
   }
 }
