@@ -36,6 +36,7 @@ coverage/
 .env.local
 .env.*.local
 
-# PocketBase
-pocketbase
+# PocketBase binary and data
+/pocketbase
+packages/brighten-api/pocketbase
 pb_data/
