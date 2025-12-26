@@ -71,6 +71,8 @@ function logUsage(
   requestId: string,
   errorMessage?: string
 ) {
+  console.log(`[Usage] ${operation} ${status} user=${userId} key=${apiKeyId} latency=${latencyMs}ms`);
+  
   usageLogs.create({
     user: userId,
     apiKey: apiKeyId,
@@ -79,12 +81,16 @@ function logUsage(
     latencyMs,
     requestId,
     errorMessage,
-  }).catch(console.error);
+  }).catch(err => {
+    console.error('[Usage] Failed to create usage_log:', err instanceof Error ? err.message : err);
+  });
 
   const today = new Date().toISOString().split('T')[0];
   usageDaily.upsert(userId, today, operation, {
     requestCount: 1,
     errorCount: status === 'error' ? 1 : 0,
     totalLatencyMs: latencyMs,
-  }).catch(console.error);
+  }).catch(err => {
+    console.error('[Usage] Failed to upsert usage_daily:', err instanceof Error ? err.message : err);
+  });
 }

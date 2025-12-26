@@ -45,20 +45,35 @@ export async function getSession(): Promise<{ user: any; token: string } | null>
 }
 
 export async function validateApiKey(authHeader: string | null) {
-  if (!authHeader) return null;
+  if (!authHeader) {
+    console.log('[Auth] No auth header provided');
+    return null;
+  }
   
   const key = authHeader.startsWith('Bearer ') 
     ? authHeader.slice(7) 
     : authHeader;
     
-  if (!key.startsWith(API_KEY_PREFIX)) return null;
+  if (!key.startsWith(API_KEY_PREFIX)) {
+    console.log('[Auth] Key does not start with expected prefix');
+    return null;
+  }
   
   const keyHash = createHash('sha256').update(key).digest('hex');
   const apiKey = await apiKeys.getByHash(keyHash);
   
-  if (!apiKey || apiKey.status !== 'active') return null;
+  if (!apiKey) {
+    console.log('[Auth] No API key found for hash');
+    return null;
+  }
+  
+  if (apiKey.status !== 'active') {
+    console.log('[Auth] API key is not active:', apiKey.status);
+    return null;
+  }
   
   const user = await users.getById(apiKey.user);
+  console.log('[Auth] Validated API key for user:', user.email);
   
   await apiKeys.update(apiKey.id, { lastUsedAt: new Date().toISOString() });
   

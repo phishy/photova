@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { users, usageLogs, getPocketBase } from '@/lib/pocketbase';
+import { users, apiKeys, getPocketBase } from '@/lib/pocketbase';
+import { getSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,12 +35,16 @@ export async function GET() {
           const user = await users.getById(payload.id);
           debug.userFound = true;
           debug.userEmail = user.email;
+          debug.userId = user.id;
         } catch (err) {
           debug.userFound = false;
           debug.userError = err instanceof Error ? err.message : String(err);
         }
       }
     }
+    
+    const session = await getSession();
+    debug.sessionHelper = session ? { userId: session.user.id, email: session.user.email } : null;
     
     debug.envCheck = {
       hasPocketBaseUrl: !!process.env.POCKETBASE_URL,
@@ -67,6 +72,52 @@ export async function GET() {
         
         const collections = await pb.collections.getFullList();
         debug.collections = collections.map(c => c.name);
+        
+        try {
+          const logs = await pb.collection('usage_logs').getList(1, 10, { sort: '-created' });
+          debug.usageLogs = {
+            totalItems: logs.totalItems,
+            recentLogs: logs.items.map(l => ({
+              id: l.id,
+              operation: l.operation,
+              status: l.status,
+              created: l.created,
+            })),
+          };
+        } catch (err) {
+          debug.usageLogsError = err instanceof Error ? err.message : String(err);
+        }
+        
+        try {
+          const daily = await pb.collection('usage_daily').getList(1, 10, { sort: '-date' });
+          debug.usageDaily = {
+            totalItems: daily.totalItems,
+            recentDays: daily.items.map(d => ({
+              id: d.id,
+              date: d.date,
+              operation: d.operation,
+              requestCount: d.requestCount,
+            })),
+          };
+        } catch (err) {
+          debug.usageDailyError = err instanceof Error ? err.message : String(err);
+        }
+        
+        if (session) {
+          try {
+            const keys = await apiKeys.listByUser(session.user.id);
+            debug.userApiKeys = keys.map(k => ({
+              id: k.id,
+              name: k.name,
+              keyPrefix: k.keyPrefix,
+              hasFullKey: !!k.key,
+              status: k.status,
+              lastUsedAt: k.lastUsedAt,
+            }));
+          } catch (err) {
+            debug.userApiKeysError = err instanceof Error ? err.message : String(err);
+          }
+        }
       } else {
         debug.adminAuth = 'missing credentials';
       }
