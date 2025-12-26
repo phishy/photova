@@ -57,10 +57,22 @@ export async function GET() {
     }
     
     try {
-      const collections = await getPocketBase().collections.getFullList();
-      debug.collections = collections.map(c => c.name);
+      const pb = getPocketBase();
+      const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
+      const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
+      
+      if (adminEmail && adminPassword) {
+        await pb.collection('_superusers').authWithPassword(adminEmail, adminPassword);
+        debug.adminAuth = 'success';
+        
+        const collections = await pb.collections.getFullList();
+        debug.collections = collections.map(c => c.name);
+      } else {
+        debug.adminAuth = 'missing credentials';
+      }
     } catch (err) {
-      debug.collectionsError = err instanceof Error ? err.message : String(err);
+      debug.adminAuth = 'failed';
+      debug.adminAuthError = err instanceof Error ? err.message : String(err);
     }
     
   } catch (err) {
