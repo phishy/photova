@@ -107,8 +107,6 @@ export async function getUsageSummary(
 
 export async function getCurrentMonthUsage(userId: string): Promise<{
   used: number;
-  limit: number;
-  percentage: number;
   resetsAt: string;
 }> {
   const now = new Date();
@@ -116,14 +114,11 @@ export async function getCurrentMonthUsage(userId: string): Promise<{
   const month = now.getMonth() + 1;
 
   const used = await usageDaily.getMonthlyTotal(userId, year, month);
-  const limit = 100;
   const nextMonth = new Date(year, month, 1);
   const resetsAt = nextMonth.toISOString();
 
   return {
     used,
-    limit,
-    percentage: Math.min(100, Math.round((used / limit) * 100)),
     resetsAt,
   };
 }

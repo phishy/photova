@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import { join } from 'path';
+import { readFileSync, existsSync } from 'fs';
 import type { Config } from '../config/schema.js';
 import { OperationRouter } from '../router/index.js';
 import type { OperationType } from '../operations/types.js';
@@ -1520,6 +1522,84 @@ function getDashboardHtml(): string {
     
     .hidden { display: none !important; }
     
+    .playground-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+    
+    .playground-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+    
+    .playground-placeholder.hidden { display: none; }
+    
+    .playground-key-select {
+      display: flex;
+      align-items: center;
+    }
+    
+    .code-snippet {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      color: var(--gray-400);
+    }
+    
+    .code-snippet .code-keyword { color: #c678dd; }
+    .code-snippet .code-string { color: #98c379; }
+    .code-snippet .code-key { color: #e5c07b; }
+    .code-snippet .code-comment { color: var(--gray-600); }
+    .code-snippet .code-number { color: #d19a66; }
+    
+    .quick-start-steps { display: flex; flex-direction: column; gap: 16px; }
+    
+    .quick-start-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    
+    .step-number {
+      width: 24px;
+      height: 24px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    
+    .step-content { flex: 1; }
+    .step-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    
+    .step-code {
+      display: block;
+      background: var(--bg);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+    
+    @media (max-width: 1200px) {
+      .playground-editor-container .card-body { height: 400px; }
+    }
+    
     @media (max-width: 1024px) {
       .stats-grid { grid-template-columns: repeat(2, 1fr); }
     }
@@ -1571,17 +1651,21 @@ function getDashboardHtml(): string {
         Brighten
       </div>
       <nav>
-        <a class="nav-item active" data-page="overview">
+        <a class="nav-item active" href="#overview" data-page="overview">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           Overview
         </a>
-        <a class="nav-item" data-page="keys">
+        <a class="nav-item" href="#keys" data-page="keys">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
           API Keys
         </a>
-        <a class="nav-item" data-page="usage">
+        <a class="nav-item" href="#usage" data-page="usage">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
           Usage
+        </a>
+        <a class="nav-item" href="#playground" data-page="playground">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Playground
         </a>
       </nav>
       <div class="sidebar-footer">
@@ -1606,7 +1690,7 @@ function getDashboardHtml(): string {
           <div class="stat-card">
             <div class="stat-label">Requests This Month</div>
             <div class="stat-value" id="stat-requests">-</div>
-            <div class="stat-sub" id="stat-limit">of - limit</div>
+            <div class="stat-sub">this billing period</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Success Rate</div>
@@ -1682,6 +1766,103 @@ function getDashboardHtml(): string {
           </div>
         </div>
       </section>
+
+      <section id="page-playground" class="hidden">
+        <div class="page-header">
+          <h1>Playground</h1>
+          <p>Try the Brighten editor with your API key. AI features are connected to your account.</p>
+        </div>
+        
+        <div class="playground-grid">
+          <div class="playground-editor-container">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Live Editor</span>
+                <div class="playground-key-select">
+                  <label style="font-size: 12px; color: var(--gray-400); margin-right: 8px;">API Key:</label>
+                  <select id="playground-key-select" class="form-input" style="width: auto; min-width: 200px; padding: 6px 10px; font-size: 12px;">
+                    <option value="">Select a key...</option>
+                  </select>
+                </div>
+              </div>
+              <div class="card-body" style="padding: 0; height: 500px; position: relative;">
+                <div id="playground-editor" style="width: 100%; height: 100%;"></div>
+                <div id="playground-no-key" class="playground-placeholder">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--gray-500); margin-bottom: 16px;">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                  </svg>
+                  <p style="color: var(--gray-400); margin-bottom: 8px;">Select an API key above to enable AI features</p>
+                  <p style="color: var(--gray-500); font-size: 12px; margin-bottom: 16px;">Keys are saved locally when you create them</p>
+                  <a href="#" onclick="showPage('keys'); return false;" class="btn btn-secondary">Create API Key</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="playground-code-container">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Integration Code</span>
+                <button class="btn btn-secondary" id="copy-snippet-btn" style="padding: 4px 10px; font-size: 12px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy
+                </button>
+              </div>
+              <div class="card-body" style="padding: 0;">
+                <pre class="code-snippet" id="code-snippet"><code><span class="code-comment">// Install: npm install brighten</span>
+<span class="code-keyword">import</span> { EditorUI } <span class="code-keyword">from</span> <span class="code-string">'brighten'</span>;
+
+<span class="code-keyword">const</span> editor = <span class="code-keyword">new</span> EditorUI({
+  <span class="code-key">container</span>: <span class="code-string">'#editor'</span>,
+  <span class="code-key">apiEndpoint</span>: <span class="code-string">'<span id="snippet-endpoint"></span>'</span>,
+  <span class="code-key">apiKey</span>: <span class="code-string">'<span id="snippet-key">YOUR_API_KEY</span>'</span>,
+  <span class="code-key">theme</span>: <span class="code-string">'dark'</span>,
+});
+
+<span class="code-comment">// Load an image</span>
+editor.loadImage(<span class="code-string">'./photo.jpg'</span>);
+
+<span class="code-comment">// Export the result</span>
+<span class="code-keyword">const</span> blob = <span class="code-keyword">await</span> editor.export({
+  <span class="code-key">format</span>: <span class="code-string">'png'</span>,
+  <span class="code-key">quality</span>: <span class="code-number">0.92</span>
+});</code></pre>
+              </div>
+            </div>
+            
+            <div class="card" style="margin-top: 16px;">
+              <div class="card-header">
+                <span class="card-title">Quick Start</span>
+              </div>
+              <div class="card-body">
+                <div class="quick-start-steps">
+                  <div class="quick-start-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                      <div class="step-title">Install the SDK</div>
+                      <code class="step-code">npm install brighten</code>
+                    </div>
+                  </div>
+                  <div class="quick-start-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                      <div class="step-title">Add the container</div>
+                      <code class="step-code">&lt;div id="editor"&gt;&lt;/div&gt;</code>
+                    </div>
+                  </div>
+                  <div class="quick-start-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                      <div class="step-title">Initialize with your API key</div>
+                      <code class="step-code">new EditorUI({ apiKey: '...' })</code>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -1732,16 +1913,31 @@ function getDashboardHtml(): string {
       return data;
     }
 
-    function showPage(name) {
+    function showPage(name, updateHash = true) {
       document.querySelectorAll('[id^="page-"]').forEach(p => p.classList.add('hidden'));
       document.getElementById('page-' + name).classList.remove('hidden');
       document.querySelectorAll('.nav-item[data-page]').forEach(n => n.classList.remove('active'));
       document.querySelector('[data-page="' + name + '"]').classList.add('active');
       
+      if (updateHash && window.location.hash !== '#' + name) {
+        history.pushState(null, '', '#' + name);
+      }
+      
       if (name === 'overview') loadOverview();
       if (name === 'keys') loadKeys();
       if (name === 'usage') loadUsage();
+      if (name === 'playground') loadPlayground();
     }
+    
+    function handleHashChange() {
+      const hash = window.location.hash.slice(1) || 'overview';
+      const validPages = ['overview', 'keys', 'usage', 'playground'];
+      if (validPages.includes(hash)) {
+        showPage(hash, false);
+      }
+    }
+    
+    window.addEventListener('hashchange', handleHashChange);
 
     async function loadOverview() {
       try {
@@ -1753,7 +1949,6 @@ function getDashboardHtml(): string {
         ]);
 
         document.getElementById('stat-requests').textContent = current.used.toLocaleString();
-        document.getElementById('stat-limit').textContent = 'of ' + current.limit.toLocaleString() + ' limit';
         
         const successRate = summary.totalRequests > 0 
           ? Math.round(((summary.totalRequests - summary.totalErrors) / summary.totalRequests) * 100) 
@@ -1843,6 +2038,75 @@ function getDashboardHtml(): string {
       }
     }
 
+    let playgroundEditor = null;
+    let selectedKeyId = localStorage.getItem('playground_selected_key_id');
+
+    async function loadPlayground() {
+      document.getElementById('snippet-endpoint').textContent = window.location.origin;
+      
+      const savedKeys = JSON.parse(localStorage.getItem('saved_api_keys') || '[]');
+      const select = document.getElementById('playground-key-select');
+      
+      select.innerHTML = '<option value="">Select a key...</option>' + 
+        savedKeys.map(k => \`<option value="\${k.id}">\${k.name}</option>\`).join('');
+      
+      if (selectedKeyId) {
+        select.value = selectedKeyId;
+        const key = savedKeys.find(k => k.id === selectedKeyId);
+        if (key) {
+          initPlaygroundEditor(key.key);
+        }
+      }
+    }
+
+    function initPlaygroundEditor(apiKey) {
+      const container = document.getElementById('playground-editor');
+      const placeholder = document.getElementById('playground-no-key');
+      
+      if (!apiKey) {
+        placeholder.classList.remove('hidden');
+        if (playgroundEditor) {
+          playgroundEditor.destroy();
+          playgroundEditor = null;
+        }
+        return;
+      }
+      
+      placeholder.classList.add('hidden');
+      document.getElementById('snippet-key').textContent = apiKey;
+      
+      if (typeof Brighten === 'undefined') {
+        container.innerHTML = '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--gray-400);"><p style="margin-bottom: 12px;">Editor loading...</p><p style="font-size: 12px; color: var(--gray-500);">If this persists, the SDK may not be available.</p></div>';
+        
+        const script = document.createElement('script');
+        script.src = '/sdk/brighten.umd.js';
+        script.onload = () => {
+          container.innerHTML = '';
+          createEditor(container, apiKey);
+        };
+        script.onerror = () => {
+          container.innerHTML = '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--gray-400); text-align: center; padding: 24px;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 16px; color: var(--gray-500);"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><p style="margin-bottom: 8px;">Editor SDK not available</p><p style="font-size: 12px; color: var(--gray-500);">Install locally: npm install brighten</p></div>';
+        };
+        document.head.appendChild(script);
+        return;
+      }
+      
+      createEditor(container, apiKey);
+    }
+
+    function createEditor(container, apiKey) {
+      if (playgroundEditor) {
+        playgroundEditor.destroy();
+      }
+      
+      playgroundEditor = new Brighten.EditorUI({
+        container: container,
+        apiEndpoint: window.location.origin,
+        apiKey: apiKey,
+        theme: 'dark',
+      });
+    }
+
     async function revokeKey(id) {
       if (!confirm('Are you sure you want to revoke this key? This cannot be undone.')) return;
       try {
@@ -1854,7 +2118,10 @@ function getDashboardHtml(): string {
     }
 
     document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-      item.addEventListener('click', () => showPage(item.dataset.page));
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        showPage(item.dataset.page);
+      });
     });
 
     document.getElementById('create-key-btn').addEventListener('click', () => {
@@ -1874,6 +2141,10 @@ function getDashboardHtml(): string {
         document.getElementById('new-key-value').textContent = result.key;
         document.getElementById('new-key-modal').classList.add('show');
         document.getElementById('key-name').value = '';
+        
+        const savedKeys = JSON.parse(localStorage.getItem('saved_api_keys') || '[]');
+        savedKeys.push({ id: result.id, name, key: result.key });
+        localStorage.setItem('saved_api_keys', JSON.stringify(savedKeys));
       } catch (err) {
         alert('Failed to create key: ' + err.message);
       }
@@ -1888,6 +2159,34 @@ function getDashboardHtml(): string {
     document.getElementById('close-new-key-modal').addEventListener('click', () => {
       document.getElementById('new-key-modal').classList.remove('show');
       loadKeys();
+    });
+
+    document.getElementById('playground-key-select').addEventListener('change', (e) => {
+      const keyId = e.target.value;
+      if (!keyId) {
+        localStorage.removeItem('playground_selected_key_id');
+        initPlaygroundEditor(null);
+        return;
+      }
+      
+      const savedKeys = JSON.parse(localStorage.getItem('saved_api_keys') || '[]');
+      const key = savedKeys.find(k => k.id === keyId);
+      
+      if (key) {
+        selectedKeyId = keyId;
+        localStorage.setItem('playground_selected_key_id', keyId);
+        initPlaygroundEditor(key.key);
+      }
+    });
+
+    document.getElementById('copy-snippet-btn').addEventListener('click', () => {
+      const snippet = document.getElementById('code-snippet').textContent;
+      navigator.clipboard.writeText(snippet);
+      const btn = document.getElementById('copy-snippet-btn');
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> Copied!';
+      setTimeout(() => {
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy';
+      }, 2000);
     });
 
     document.getElementById('logout-btn').addEventListener('click', () => {
@@ -1927,7 +2226,7 @@ function getDashboardHtml(): string {
           currentUser = result.user;
           document.getElementById('auth-page').classList.add('hidden');
           document.getElementById('app').classList.remove('hidden');
-          showPage('overview');
+          handleHashChange();
         }
         errorEl.classList.remove('show');
       } catch (err) {
@@ -1942,7 +2241,7 @@ function getDashboardHtml(): string {
           currentUser = user;
           document.getElementById('auth-page').classList.add('hidden');
           document.getElementById('app').classList.remove('hidden');
-          showPage('overview');
+          handleHashChange();
         })
         .catch(() => {
           localStorage.removeItem('token');
@@ -1954,13 +2253,13 @@ function getDashboardHtml(): string {
 </html>`;
 }
 
-export function createServer(config: Config) {
+export async function createServer(config: Config) {
   const app = express();
   const router = new OperationRouter(config);
   const authEnabled = config.auth?.enabled ?? false;
 
   if (authEnabled && config.auth?.pocketbase) {
-    initPocketBase({
+    await initPocketBase({
       url: config.auth.pocketbase.url,
       adminEmail: config.auth.pocketbase.admin_email,
       adminPassword: config.auth.pocketbase.admin_password,
@@ -1969,6 +2268,15 @@ export function createServer(config: Config) {
 
   app.use(cors());
   app.use(express.json({ limit: '50mb' }));
+
+  app.get('/sdk/brighten.umd.js', (_req: Request, res: Response) => {
+    const sdkPath = join(process.cwd(), '../brighten/dist/brighten.umd.js');
+    if (existsSync(sdkPath)) {
+      res.type('application/javascript').send(readFileSync(sdkPath, 'utf-8'));
+    } else {
+      res.status(404).send('SDK not built. Run: npm run build --workspace=packages/brighten');
+    }
+  });
 
   app.get('/', (_req: Request, res: Response) => {
     res.type('html').send(getHomepageHtml());
@@ -2084,7 +2392,7 @@ export function createServer(config: Config) {
 }
 
 export async function startServer(config: Config) {
-  const app = createServer(config);
+  const app = await createServer(config);
   const port = config.server.port;
   const host = config.server.host;
 

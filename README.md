@@ -160,6 +160,8 @@ try {
 | `image` | `string \| Blob \| HTMLImageElement` | `null` | Initial image to load |
 | `theme` | `'light' \| 'dark'` | `'light'` | UI theme preference |
 | `tools` | `string[]` | `['all']` | List of enabled tools (optional) |
+| `apiEndpoint` | `string` | `undefined` | Brighten API endpoint URL for AI features |
+| `apiKey` | `string` | `undefined` | API key for authenticating AI operations |
 | `onExport` | `(blob: Blob) => void` | `undefined` | Callback triggered when user clicks export |
 
 ### `Editor` (Core) Configuration

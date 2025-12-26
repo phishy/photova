@@ -29,6 +29,7 @@ export interface EditorUIConfig {
   showSidebar?: boolean;
   showPanel?: boolean;
   apiEndpoint?: string;
+  apiKey?: string;
   styles?: EditorUIStyles;
   unstyled?: boolean;
   onExport?: (blob: Blob) => void;
@@ -1655,6 +1656,14 @@ export class EditorUI {
     }
   }
 
+  private getApiHeaders(): HeadersInit {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (this.config.apiKey) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+    }
+    return headers;
+  }
+
   private async removeBackground(): Promise<void> {
     if (!this.config.apiEndpoint) {
       console.error('API endpoint not configured');
@@ -1691,7 +1700,7 @@ export class EditorUI {
     try {
       const response = await fetch(`${this.config.apiEndpoint}/api/v1/background-remove`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getApiHeaders(),
         body: JSON.stringify({ image: base64Image }),
       });
 
@@ -1756,7 +1765,7 @@ export class EditorUI {
     try {
       const response = await fetch(`${this.config.apiEndpoint}/api/v1/unblur`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getApiHeaders(),
         body: JSON.stringify({ image: base64Image }),
       });
 
@@ -1830,7 +1839,7 @@ export class EditorUI {
     try {
       const response = await fetch(`${this.config.apiEndpoint}/api/v1/colorize`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getApiHeaders(),
         body: JSON.stringify({ image: base64Image }),
       });
 
@@ -1904,7 +1913,7 @@ export class EditorUI {
 
       const response = await fetch(`${this.config.apiEndpoint}/api/v1/restore`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getApiHeaders(),
         body: JSON.stringify({ image: dataUrl }),
       });
 
@@ -2281,7 +2290,7 @@ export class EditorUI {
     try {
       const response = await fetch(`${this.config.apiEndpoint}/api/v1/inpaint`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getApiHeaders(),
         body: JSON.stringify({ image: base64Image, options: { mask: base64Mask } }),
       });
 

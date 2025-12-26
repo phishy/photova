@@ -122,12 +122,12 @@ migrate((app) => {
     ],
     "id": "pbc_3577178630",
     "indexes": [],
-    "listRule": "@request.auth.id = user.id",
+    "listRule": "",
     "name": "api_keys",
     "system": false,
     "type": "base",
-    "updateRule": "@request.auth.id = user.id",
-    "viewRule": "@request.auth.id = user.id"
+    "updateRule": "",
+    "viewRule": ""
   });
 
   return app.save(collection);

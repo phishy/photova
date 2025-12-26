@@ -2,6 +2,8 @@ import PocketBase from 'pocketbase';
 import type { User, ApiKey, UsageLog, UsageDaily } from './types.js';
 
 let pbClient: PocketBase | null = null;
+let adminAuthenticated = false;
+let adminCredentials: { email: string; password: string } | null = null;
 
 export interface PocketBaseConfig {
   url: string;
@@ -9,10 +11,52 @@ export interface PocketBaseConfig {
   adminPassword?: string;
 }
 
-export function initPocketBase(config: PocketBaseConfig): PocketBase {
+export async function initPocketBase(config: PocketBaseConfig): Promise<PocketBase> {
   pbClient = new PocketBase(config.url);
   pbClient.autoCancellation(false);
+
+  if (config.adminEmail && config.adminPassword) {
+    adminCredentials = { email: config.adminEmail, password: config.adminPassword };
+    try {
+      await pbClient.collection('_superusers').authWithPassword(
+        config.adminEmail,
+        config.adminPassword
+      );
+      adminAuthenticated = true;
+      console.log('PocketBase admin authenticated successfully');
+    } catch (error) {
+      console.error('Failed to authenticate PocketBase admin:', error);
+    }
+  }
+
   return pbClient;
+}
+
+async function ensureAdminAuth(): Promise<void> {
+  const pb = getPocketBase();
+  
+  if (pb.authStore.isValid && adminAuthenticated) {
+    return;
+  }
+  
+  if (!adminCredentials) {
+    throw new Error('Admin credentials not configured. Cannot access admin-only resources.');
+  }
+  
+  try {
+    await pb.collection('_superusers').authWithPassword(
+      adminCredentials.email,
+      adminCredentials.password
+    );
+    adminAuthenticated = true;
+  } catch (error) {
+    adminAuthenticated = false;
+    throw new Error('Failed to authenticate as admin: ' + (error instanceof Error ? error.message : String(error)));
+  }
+}
+
+export function isAdminAuthenticated(): boolean {
+  return adminAuthenticated;
 }
 
 export function getPocketBase(): PocketBase {
@@ -49,14 +93,17 @@ export const users = {
 
 export const apiKeys = {
   async create(data: Partial<ApiKey>): Promise<ApiKey> {
+    await ensureAdminAuth();
     return getPocketBase().collection('api_keys').create<ApiKey>(data);
   },
 
   async getById(id: string): Promise<ApiKey> {
+    await ensureAdminAuth();
     return getPocketBase().collection('api_keys').getOne<ApiKey>(id);
   },
 
   async getByHash(keyHash: string): Promise<ApiKey | null> {
+    await ensureAdminAuth();
     try {
       return await getPocketBase()
         .collection('api_keys')
@@ -67,26 +114,42 @@ export const apiKeys = {
   },
 
   async listByUser(userId: string): Promise<ApiKey[]> {
-    const result = await getPocketBase()
-      .collection('api_keys')
-      .getList<ApiKey>(1, 100, {
-        filter: `user="${userId}"`,
-        sort: '-created',
-      });
-    return result.items;
+    const pb = getPocketBase();
+    await ensureAdminAuth();
+    
+    const rawUrl = `${pb.baseURL}/api/collections/api_keys/records?page=1&perPage=100&filter=user="${userId}"`;
+    
+    const response = await fetch(rawUrl, {
+      headers: {
+        Authorization: pb.authStore.token,
+      },
+    });
+    
+    if (!response.ok) {
+      const error = (await response.json()) as { message?: string };
+      throw new Error(error.message || 'Failed to list API keys');
+    }
+    
+    const result = (await response.json()) as { items: ApiKey[] };
+    return result.items.sort((a, b) => 
+      new Date(b.created).getTime() - new Date(a.created).getTime()
+    );
   },
 
   async update(id: string, data: Partial<ApiKey>): Promise<ApiKey> {
+    await ensureAdminAuth();
     return getPocketBase().collection('api_keys').update<ApiKey>(id, data);
   },
 
   async delete(id: string): Promise<boolean> {
+    await ensureAdminAuth();
     return getPocketBase().collection('api_keys').delete(id);
   },
 };
 
 export const usageLogs = {
   async create(data: Partial<UsageLog>): Promise<UsageLog> {
+    await ensureAdminAuth();
     return getPocketBase().collection('usage_logs').create<UsageLog>(data);
   },
 
@@ -112,6 +175,7 @@ export const usageLogs = {
 
 export const usageDaily = {
   async upsert(userId: string, date: string, operation: string, data: Partial<UsageDaily>): Promise<UsageDaily> {
+    await ensureAdminAuth();
     const pb = getPocketBase();
     try {
       const existing = await pb
@@ -140,6 +204,7 @@ export const usageDaily = {
     startDate: string,
     endDate: string
   ): Promise<UsageDaily[]> {
+    await ensureAdminAuth();
     const result = await getPocketBase()
       .collection('usage_daily')
       .getList<UsageDaily>(1, 1000, {

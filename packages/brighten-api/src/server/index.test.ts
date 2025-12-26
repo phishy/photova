@@ -35,7 +35,7 @@ describe('Server', () => {
 
   describe('GET /api/health', () => {
     it('should return ok status', async () => {
-      const app = createServer(createConfig());
+      const app = await createServer(createConfig());
       
       const response = await request(app).get('/api/health');
       
@@ -46,7 +46,7 @@ describe('Server', () => {
 
   describe('GET /api/operations', () => {
     it('should return list of available operations', async () => {
-      const app = createServer(createConfig());
+      const app = await createServer(createConfig());
       
       const response = await request(app).get('/api/operations');
       
@@ -59,7 +59,7 @@ describe('Server', () => {
 
   describe('POST /api/v1/:operation', () => {
     it('should process image with data URI', async () => {
-      const app = createServer(createConfig());
+      const app = await createServer(createConfig());
       const base64Image = Buffer.from('test-image').toString('base64');
       
       const response = await request(app)
@@ -73,7 +73,7 @@ describe('Server', () => {
     });
 
     it('should process raw base64 image', async () => {
-      const app = createServer(createConfig());
+      const app = await createServer(createConfig());
       const base64Image = Buffer.from('test-image').toString('base64');
       
       const response = await request(app)
@@ -85,7 +85,7 @@ describe('Server', () => {
     });
 
     it('should return 400 when image is missing', async () => {
-      const app = createServer(createConfig());
+      const app = await createServer(createConfig());
       
       const response = await request(app)
         .post('/api/v1/background-remove')
@@ -96,7 +96,7 @@ describe('Server', () => {
     });
 
     it('should pass options to router', async () => {
-      const app = createServer(createConfig());
+      const app = await createServer(createConfig());
       const base64Image = Buffer.from('test-image').toString('base64');
       
       const response = await request(app)

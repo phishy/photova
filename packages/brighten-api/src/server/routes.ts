@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import PocketBase from 'pocketbase';
 import { getPocketBase, apiKeys, users } from '../auth/client.js';
 import { generateApiKey } from '../auth/middleware.js';
 import { getUsageSummary, getTimeSeries, getCurrentMonthUsage } from '../usage/service.js';
@@ -51,8 +52,10 @@ export function createAuthRoutes(): Router {
     }
 
     try {
-      const pb = getPocketBase();
-      const authData = await pb.collection('users').authWithPassword(email, password);
+      // Use a separate PocketBase client for user auth to avoid overwriting admin auth
+      const adminPb = getPocketBase();
+      const userPb = new PocketBase(adminPb.baseURL);
+      const authData = await userPb.collection('users').authWithPassword(email, password);
 
       res.json({
         token: authData.token,
@@ -70,8 +73,6 @@ export function createAuthRoutes(): Router {
   });
 
   router.post('/logout', async (_req: Request, res: Response) => {
-    const pb = getPocketBase();
-    pb.authStore.clear();
     res.json({ success: true });
   });
 
@@ -83,16 +84,15 @@ export function createAuthRoutes(): Router {
     }
 
     try {
-      const pb = getPocketBase();
       const token = authHeader.substring(7);
-      pb.authStore.save(token, null);
-
-      if (!pb.authStore.isValid) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      if (!payload.exp || payload.exp * 1000 < Date.now()) {
         res.status(401).json({ error: 'Invalid or expired token' });
         return;
       }
 
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const pb = getPocketBase();
       const user = await pb.collection('users').getOne(payload.id);
       const usage = await getCurrentMonthUsage(user.id);
 
@@ -119,16 +119,14 @@ export function createAuthRoutes(): Router {
     const { name } = req.body;
 
     try {
-      const pb = getPocketBase();
       const token = authHeader.substring(7);
-      pb.authStore.save(token, null);
-
-      if (!pb.authStore.isValid) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      if (!payload.exp || payload.exp * 1000 < Date.now()) {
         res.status(401).json({ error: 'Invalid or expired token' });
         return;
       }
 
-      const payload = JSON.parse(atob(token.split('.')[1]));
       const updated = await users.update(payload.id, { name });
 
       res.json({
@@ -149,7 +147,7 @@ export function createAuthRoutes(): Router {
 export function createApiKeysRoutes(): Router {
   const router = Router();
 
-  const requireAuth = async (req: Request, res: Response): Promise<string | null> => {
+  const requireAuth = async (req: Request, res: Response): Promise<{ userId: string; token: string } | null> => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -157,17 +155,15 @@ export function createApiKeysRoutes(): Router {
     }
 
     try {
-      const pb = getPocketBase();
       const token = authHeader.substring(7);
-      pb.authStore.save(token, null);
-
-      if (!pb.authStore.isValid) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      if (!payload.exp || payload.exp * 1000 < Date.now()) {
         res.status(401).json({ error: 'Invalid or expired token' });
         return null;
       }
 
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      return payload.id;
+      return { userId: payload.id, token };
     } catch {
       res.status(401).json({ error: 'Invalid or expired token' });
       return null;
@@ -175,11 +171,11 @@ export function createApiKeysRoutes(): Router {
   };
 
   router.get('/', async (req: Request, res: Response) => {
-    const userId = await requireAuth(req, res);
-    if (!userId) return;
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
 
     try {
-      const keys = await apiKeys.listByUser(userId);
+      const keys = await apiKeys.listByUser(auth.userId);
 
       res.json({
         keys: keys.map((k) => ({
@@ -194,14 +190,16 @@ export function createApiKeysRoutes(): Router {
         })),
       });
     } catch (error) {
+      console.error('Failed to list keys:', error);
       const message = error instanceof Error ? error.message : 'Failed to list keys';
-      res.status(500).json({ error: message });
+      const stack = error instanceof Error ? error.stack : undefined;
+      res.status(500).json({ error: message, debug: { stack, name: (error as Error)?.name } });
     }
   });
 
   router.post('/', async (req: Request, res: Response) => {
-    const userId = await requireAuth(req, res);
-    if (!userId) return;
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
 
     const { name, scopes, expiresAt } = req.body;
 
@@ -209,7 +207,7 @@ export function createApiKeysRoutes(): Router {
       const { key, hash, prefix } = generateApiKey();
 
       const apiKey = await apiKeys.create({
-        user: userId,
+        user: auth.userId,
         name: name || 'Default API Key',
         keyHash: hash,
         keyPrefix: prefix,
@@ -235,8 +233,8 @@ export function createApiKeysRoutes(): Router {
   });
 
   router.patch('/:id', async (req: Request, res: Response) => {
-    const userId = await requireAuth(req, res);
-    if (!userId) return;
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
 
     const { id } = req.params;
     const { name, scopes, status } = req.body;
@@ -244,7 +242,7 @@ export function createApiKeysRoutes(): Router {
     try {
       const existingKey = await apiKeys.getById(id);
 
-      if (existingKey.user !== userId) {
+      if (existingKey.user !== auth.userId) {
         res.status(403).json({ error: 'Not authorized' });
         return;
       }
@@ -270,15 +268,15 @@ export function createApiKeysRoutes(): Router {
   });
 
   router.delete('/:id', async (req: Request, res: Response) => {
-    const userId = await requireAuth(req, res);
-    if (!userId) return;
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
 
     const { id } = req.params;
 
     try {
       const existingKey = await apiKeys.getById(id);
 
-      if (existingKey.user !== userId) {
+      if (existingKey.user !== auth.userId) {
         res.status(403).json({ error: 'Not authorized' });
         return;
       }
@@ -292,15 +290,15 @@ export function createApiKeysRoutes(): Router {
   });
 
   router.post('/:id/regenerate', async (req: Request, res: Response) => {
-    const userId = await requireAuth(req, res);
-    if (!userId) return;
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
 
     const { id } = req.params;
 
     try {
       const existingKey = await apiKeys.getById(id);
 
-      if (existingKey.user !== userId) {
+      if (existingKey.user !== auth.userId) {
         res.status(403).json({ error: 'Not authorized' });
         return;
       }
@@ -339,16 +337,14 @@ export function createUsageRoutes(): Router {
     }
 
     try {
-      const pb = getPocketBase();
       const token = authHeader.substring(7);
-      pb.authStore.save(token, null);
-
-      if (!pb.authStore.isValid) {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      if (!payload.exp || payload.exp * 1000 < Date.now()) {
         res.status(401).json({ error: 'Invalid or expired token' });
         return null;
       }
 
-      const payload = JSON.parse(atob(token.split('.')[1]));
       return payload.id;
     } catch {
       res.status(401).json({ error: 'Invalid or expired token' });
@@ -409,14 +405,8 @@ export function createUsageRoutes(): Router {
     if (!userId) return;
 
     try {
-      const user = await users.getById(userId);
       const usage = await getCurrentMonthUsage(userId);
-
-      res.json({
-        ...usage,
-        limit: PLAN_LIMITS[user.plan]?.monthlyRequests || PLAN_LIMITS.free.monthlyRequests,
-        plan: user.plan,
-      });
+      res.json(usage);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to get current usage';
       res.status(500).json({ error: message });

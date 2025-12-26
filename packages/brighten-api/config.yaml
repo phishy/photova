@@ -6,6 +6,8 @@ auth:
   enabled: true
   pocketbase:
     url: http://127.0.0.1:8090
+    admin_email: ${POCKETBASE_ADMIN_EMAIL}
+    admin_password: ${POCKETBASE_ADMIN_PASSWORD}
 
 operations:
   background-remove:
