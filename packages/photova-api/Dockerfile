@@ -56,17 +56,10 @@ CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
 # ============================================
 FROM base AS production
 
-# Copy composer files first for better caching
-COPY composer.json composer.lock ./
-
-# Install dependencies (no dev)
-RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
-
-# Copy application files
 COPY . .
 
-# Remove unnecessary files
-RUN rm -rf tests .git .github
+RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader \
+    && rm -rf tests .git .github
 
 # Create storage directories and set permissions
 RUN mkdir -p storage/framework/{sessions,views,cache} \
