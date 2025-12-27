@@ -35,7 +35,7 @@ COPY packages/photova-api/ .
 
 RUN ls -la && cat composer.json | head -5
 
-RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts
+RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts -vvv 2>&1 || (echo "Composer failed" && cat composer.json && exit 1)
 
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
