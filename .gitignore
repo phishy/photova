@@ -36,7 +36,5 @@ coverage/
 .env.local
 .env.*.local
 
-# PocketBase binary and data
-/pocketbase
-packages/brighten-api/pocketbase
-pb_data/
+# TypeScript build info
+*.tsbuildinfo

@@ -1,107 +1,138 @@
-# Brighten API
+# Photova API
 
-A unified media processing API with configurable backends. Route image/video operations to different providers (Replicate, fal.ai, remove.bg, or local processing) based on configuration.
+Laravel 12 + PostgreSQL media processing API with dashboard UI.
 
 ## Features
 
 - **Unified API** - Single endpoint for all media operations
-- **Configurable Routing** - Choose providers per operation via YAML config
+- **Configurable Routing** - Choose providers per operation via config
 - **Fallback Support** - Automatic failover to backup providers
-- **Multiple Providers** - Replicate, fal.ai, remove.bg, and more
-- **Authentication** - User accounts, API keys, and usage tracking (via PocketBase)
-- **Dashboard** - Web UI for managing API keys and viewing usage analytics
-- **Environment Variables** - Secure API key injection
+- **Multiple Providers** - Replicate, fal.ai, remove.bg
+- **Authentication** - User accounts, API keys, and usage tracking
+- **Asset Storage** - Configurable storage backends (filesystem, S3)
 
 ## Quick Start
 
+### Prerequisites
+
+- PHP 8.2+
+- Composer
+- Docker (for PostgreSQL)
+
+### Setup (Recommended)
+
+Run PostgreSQL via Docker, Laravel locally for fast development:
+
 ```bash
-npm install
+# From monorepo root - start PostgreSQL
+docker compose up postgres -d
 
-cp .env.example .env.local
-# Edit .env.local with your API keys
+# Setup Laravel
+cd packages/brighten-api
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
 
-npm run setup   # Downloads PocketBase, creates collections
-npm run dev     # Start the API server
+# Start dev server
+php artisan serve
 ```
 
-For development with auth enabled, run in separate terminals:
+The `.env.example` defaults match the Docker PostgreSQL config, so no edits needed.
+
+### Alternative: Local PostgreSQL
+
+If you have PostgreSQL installed locally, update `.env` with your credentials and skip the Docker step.
+
+### Alternative: Full Docker (Sail)
+
 ```bash
-npm run dev:pocketbase   # Terminal 1: PocketBase
-npm run dev              # Terminal 2: API server
+composer install
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan migrate
 ```
 
 ## Configuration
 
-```yaml
-server:
-  port: 3000
+### Environment Variables
 
-auth:
-  enabled: false  # Set to true to enable authentication
-  pocketbase:
-    url: http://127.0.0.1:8090
+| Variable | Description |
+|----------|-------------|
+| `DB_CONNECTION` | Database driver (pgsql) |
+| `DB_HOST` | Database host |
+| `DB_DATABASE` | Database name |
+| `DB_USERNAME` | Database user |
+| `DB_PASSWORD` | Database password |
+| `AUTH_ENABLED` | Enable API key auth (true/false) |
+| `REPLICATE_API_KEY` | Replicate API key |
+| `FAL_API_KEY` | fal.ai API key |
+| `REMOVEBG_API_KEY` | remove.bg API key |
 
-operations:
-  background-remove:
-    provider: replicate
-    fallback: removebg
-    
-  upscale:
-    provider: fal
-    
-providers:
-  replicate:
-    api_key: ${REPLICATE_API_KEY}
-  fal:
-    api_key: ${FAL_API_KEY}
+### Provider Configuration
+
+Edit `config/photova.php` to configure operation routing:
+
+```php
+'operations' => [
+    'background-remove' => [
+        'provider' => 'replicate',
+        'fallback' => 'removebg',
+    ],
+    'upscale' => [
+        'provider' => 'replicate',
+    ],
+],
 ```
 
 ## API Endpoints
 
-### Homepage & Documentation
+### System
 ```
-GET /          # HTML homepage with API overview
-GET /docs      # Interactive API documentation (Redoc)
-GET /dashboard # User dashboard (when auth enabled)
-```
-
-### System Endpoints
-```
-GET /api/health        # Health check
-GET /api/operations    # List available operations
-GET /api/openapi.json  # OpenAPI specification
+GET  /api/health           Health check
+GET  /api/operations       List available operations
+GET  /api/openapi.json     OpenAPI specification
 ```
 
-### Authentication (when enabled)
+### Authentication
 ```
-POST /api/auth/signup   # Create account
-POST /api/auth/login    # Sign in
-POST /api/auth/logout   # Sign out
-GET  /api/auth/me       # Get current user
-PATCH /api/auth/me      # Update profile
-```
-
-### API Keys (when enabled)
-```
-GET    /api/keys           # List API keys
-POST   /api/keys           # Create new key
-PATCH  /api/keys/:id       # Update key
-DELETE /api/keys/:id       # Delete key
-POST   /api/keys/:id/regenerate  # Regenerate key
+POST /api/auth/signup      Create account
+POST /api/auth/login       Sign in (returns token)
+POST /api/auth/logout      Sign out
+GET  /api/auth/me          Get current user
+PATCH /api/auth/me         Update profile
 ```
 
-### Usage Analytics (when enabled)
+### API Keys
 ```
-GET /api/usage/summary     # Usage summary with breakdown
-GET /api/usage/timeseries  # Time series data for charts
-GET /api/usage/current     # Current month usage
+GET    /api/keys                  List API keys
+POST   /api/keys                  Create new key
+GET    /api/keys/{id}             Get key details
+PATCH  /api/keys/{id}             Update key
+DELETE /api/keys/{id}             Delete key
+POST   /api/keys/{id}/regenerate  Regenerate key
 ```
 
-### Execute Operation
+### Usage Analytics
 ```
-POST /api/v1/:operation
+GET /api/usage/summary      Usage summary with breakdown
+GET /api/usage/timeseries   Time series data for charts
+GET /api/usage/current      Current month usage
+```
 
-Headers (when auth enabled):
+### Asset Storage
+```
+POST   /api/assets              Upload asset
+GET    /api/assets              List assets
+GET    /api/assets/{id}         Get asset metadata
+GET    /api/assets/{id}?download=true  Download asset
+DELETE /api/assets/{id}         Delete asset
+```
+
+### Operations
+```
+POST /api/v1/{operation}
+
+Headers:
   Authorization: Bearer <api_key>
   # or
   X-API-Key: <api_key>
@@ -110,15 +141,6 @@ Body:
 {
   "image": "data:image/png;base64,...",
   "options": {}
-}
-
-Response:
-{
-  "image": "data:image/png;base64,...",
-  "metadata": {
-    "provider": "replicate",
-    "processingTime": 1234
-  }
 }
 ```
 
@@ -133,80 +155,29 @@ Response:
 | `inpaint` | Remove objects from images | replicate |
 | `restore` | Restore old/damaged photos | replicate |
 
-## Authentication Setup
-
-The setup script automatically downloads PocketBase and creates the required collections:
+## Development
 
 ```bash
-cp .env.example .env.local
-# Edit .env.local with admin credentials
+# Start PostgreSQL (from monorepo root)
+docker compose up postgres -d
 
-npm run setup
+# Start Laravel dev server
+php artisan serve
+
+# Run tests (52 tests)
+./vendor/bin/pest
+
+# Other useful commands
+php artisan route:list         # List all routes
+php artisan migrate:fresh      # Reset database
 ```
 
-Then enable auth in `config.yaml`:
-```yaml
-auth:
-  enabled: true
-```
+### Stopping PostgreSQL
 
-Start both servers and visit `/dashboard`:
 ```bash
-npm run dev:pocketbase   # Terminal 1
-npm run dev              # Terminal 2
+# From monorepo root
+docker compose stop postgres
 ```
-
-PocketBase admin UI: http://127.0.0.1:8090/_/
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `REPLICATE_API_KEY` | Replicate API key |
-| `FAL_API_KEY` | fal.ai API key |
-| `REMOVEBG_API_KEY` | remove.bg API key |
-| `CONFIG_PATH` | Custom config file path |
-| `POCKETBASE_URL` | PocketBase server URL |
-| `POCKETBASE_ADMIN_EMAIL` | PocketBase admin email |
-| `POCKETBASE_ADMIN_PASSWORD` | PocketBase admin password |
-
-## Docker Deployment
-
-The Dockerfile bundles both the Next.js API and PocketBase in a single container.
-
-### Build from monorepo root:
-```bash
-docker build -f packages/brighten-api/Dockerfile -t brighten-api .
-```
-
-### Run locally:
-```bash
-docker run -p 3001:3001 -p 8090:8090 \
-  -e REPLICATE_API_KEY=your_key \
-  -e POCKETBASE_ADMIN_EMAIL=admin@example.com \
-  -e POCKETBASE_ADMIN_PASSWORD=your_password \
-  -v brighten-pb-data:/app/pb_data \
-  brighten-api
-```
-
-### Coolify Deployment
-
-1. Create a new service from Git repository
-2. Set build context to repository root
-3. Set Dockerfile path: `packages/brighten-api/Dockerfile`
-4. Add environment variables:
-   - `REPLICATE_API_KEY`
-   - `POCKETBASE_ADMIN_EMAIL` 
-   - `POCKETBASE_ADMIN_PASSWORD`
-5. Expose port 3001
-6. Add persistent storage mounted to `/app/pb_data`
-
-### Ports
-
-| Port | Service |
-|------|---------|
-| 3001 | Next.js API |
-| 8090 | PocketBase (internal, also exposed for admin access) |
 
 ## License
 

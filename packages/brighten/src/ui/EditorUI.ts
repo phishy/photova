@@ -20,6 +20,11 @@ export interface EditorUIStyles {
   fontFamily?: string;
 }
 
+export interface SaveResult {
+  id: string;
+  url: string;
+}
+
 export interface EditorUIConfig {
   container: HTMLElement | string;
   image?: string;
@@ -33,6 +38,7 @@ export interface EditorUIConfig {
   styles?: EditorUIStyles;
   unstyled?: boolean;
   onExport?: (blob: Blob) => void;
+  onSave?: (blob: Blob) => Promise<SaveResult | void>;
   onClose?: () => void;
 }
 
@@ -85,6 +91,7 @@ export class EditorUI {
   private brushTool: BrushTool | null = null;
   private brushMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private brushMouseUpHandler: (() => void) | null = null;
+  private isSaving = false;
 
   constructor(config: EditorUIConfig) {
     this.config = {
@@ -195,6 +202,9 @@ export class EditorUI {
           <button class="brighten-btn" data-action="open" title="Open Image">
             ${icons.upload} Open
           </button>
+          ${this.config.onSave ? `<button class="brighten-btn" data-action="save" title="Save">
+            ${icons.save || icons.download} Save
+          </button>` : ''}
           <button class="brighten-btn brighten-btn-primary" data-action="export" title="Export">
             ${icons.download} Export
           </button>
@@ -1000,6 +1010,9 @@ export class EditorUI {
           break;
         case 'export':
           this.exportImage();
+          break;
+        case 'save':
+          this.saveImage();
           break;
         case 'close':
           this.config.onClose?.();
@@ -2436,6 +2449,45 @@ export class EditorUI {
       link.download = 'edited-image.png';
       link.click();
       URL.revokeObjectURL(url);
+    }
+  }
+
+  private async saveImage(): Promise<void> {
+    if (!this.config.onSave || this.isSaving) return;
+
+    const btn = this.root.querySelector('[data-action="save"]') as HTMLButtonElement;
+    const originalContent = btn?.innerHTML;
+
+    try {
+      this.isSaving = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `${icons.save} Saving...`;
+      }
+
+      const blob = await this.editor.export({ format: 'png', quality: 0.92 });
+      const result = await this.config.onSave(blob);
+
+      if (btn) {
+        btn.innerHTML = `${icons.check} Saved`;
+        setTimeout(() => {
+          btn.innerHTML = originalContent || `${icons.save} Save`;
+        }, 2000);
+      }
+
+      return result as void;
+    } catch (error) {
+      console.error('Save failed:', error);
+      if (btn) {
+        btn.innerHTML = `${icons.close} Failed`;
+        setTimeout(() => {
+          btn.innerHTML = originalContent || `${icons.save} Save`;
+        }, 2000);
+      }
+      throw error;
+    } finally {
+      this.isSaving = false;
+      if (btn) btn.disabled = false;
     }
   }
 

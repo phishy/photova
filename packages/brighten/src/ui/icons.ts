@@ -177,4 +177,9 @@ export const icons = {
   expand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
   </svg>`,
+
+  save: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+    <path d="M17 21v-8H7v8M7 3v5h8"/>
+  </svg>`,
 };

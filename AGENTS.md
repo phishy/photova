@@ -5,7 +5,7 @@
 Brighten is a photo editor ecosystem with two packages:
 
 1. **brighten** (`packages/brighten/`) - JavaScript/TypeScript photo editor SDK with drop-in UI component
-2. **brighten-api** (`packages/brighten-api/`) - Unified media processing API with configurable AI backends
+2. **brighten-api** (`packages/brighten-api/`) - Laravel 12/PostgreSQL media processing API (Photova)
 
 ## Documentation Maintenance
 
@@ -34,7 +34,7 @@ Brighten is a photo editor ecosystem with two packages:
 brighten/
 ├── packages/
 │   ├── brighten/           # Photo Editor SDK
-│   └── brighten-api/       # Media Processing API
+│   └── brighten-api/    # Media Processing API (Laravel/PostgreSQL)
 ├── .github/workflows/      # CI/CD
 ├── AGENTS.md               # This file
 └── package.json            # Workspace config
@@ -43,6 +43,42 @@ brighten/
 ---
 
 # Package: brighten (Photo Editor SDK)
+
+## Requirements
+
+### Image Loading & Export
+- User should be able to load images from file, URL, or drag-and-drop
+- User should be able to export edited images in PNG, JPEG, or WebP formats
+- User should be able to control export quality
+
+### Editing Tools
+- User should be able to crop images with preset aspect ratios or freeform
+- User should be able to rotate and flip images
+- User should be able to draw/paint on images with configurable brush
+- User should be able to add text layers with customizable font, size, and color
+- User should be able to add shape layers (rectangle, circle, line)
+
+### Filters & Adjustments
+- User should be able to apply filter presets (Vintage, Noir, Dramatic, etc.)
+- User should be able to adjust brightness, contrast, saturation, exposure
+- User should be able to reset adjustments to original
+
+### Layers
+- User should be able to add multiple layers (image, text, shape, drawing)
+- User should be able to reorder, show/hide, and delete layers
+- User should be able to adjust layer opacity
+
+### History
+- User should be able to undo/redo edits
+- User should be able to use keyboard shortcuts (Ctrl+Z, Ctrl+Y)
+
+### AI Features (when API configured)
+- User should be able to remove background from images
+- User should be able to upscale images
+- User should be able to unblur/enhance images
+- User should be able to colorize black & white images
+- User should be able to restore old photos
+- User should be able to remove objects via inpainting
 
 ## Architecture
 
@@ -173,179 +209,213 @@ const myPlugin: Plugin = {
 
 ---
 
-# Package: brighten-api (Media Processing API)
+# Package: brighten-api (Photova API)
+
+Laravel 12/PostgreSQL media processing API with dashboard UI.
+
+## Requirements
+
+### AI Operations
+- User should be able to remove background from an image
+- User should be able to upscale an image up to 4x
+- User should be able to unblur/enhance an image
+- User should be able to colorize a black & white image
+- User should be able to restore old/damaged photos
+- User should be able to remove objects from images via inpainting
+
+### Asset Storage
+- User should be able to upload images to storage
+- User should be able to list uploaded assets
+- User should be able to download/retrieve an asset by ID
+- User should be able to delete an asset
+- User should be able to configure multiple storage backends (filesystem, S3)
+- User should be able to specify which bucket to use per request
+
+### Authentication
+- User should be able to sign up and log in
+- User should be able to create and manage API keys
+- User should be able to view usage analytics
+- API operations should require valid API key when auth is enabled
+
+### Dashboard
+- User should be able to view API keys
+- User should be able to view usage statistics
+- User should be able to upload and manage assets
+- User should be able to test operations in the playground
 
 ## Architecture
 
 ```
-packages/brighten-api/src/
-├── auth/             # Authentication and API key management (PocketBase)
-│   ├── types.ts      # User, ApiKey, UsageLog types
-│   ├── client.ts     # PocketBase client wrapper
-│   ├── middleware.ts # Express middleware for API key auth
-│   └── index.ts
-├── config/           # YAML config loading with Zod validation
-│   ├── schema.ts     # Config types and Zod schemas
-│   ├── loader.ts     # Loads YAML, interpolates ${ENV_VARS}
-│   └── index.ts
-├── operations/       # Operation type definitions
-│   ├── types.ts      # OperationType, OperationInput, OperationResult
-│   └── index.ts
-├── providers/        # Backend implementations
-│   ├── base.ts       # BaseProvider abstract class
-│   ├── remote/
-│   │   ├── replicate.ts   # Replicate API integration
-│   │   ├── fal.ts         # fal.ai integration
-│   │   └── removebg.ts    # remove.bg integration
-│   └── index.ts
-├── router/           # Routes operations to providers based on config
-│   └── index.ts
-├── server/           # Express API server
-│   ├── index.ts      # Main server, homepage, docs, dashboard
-│   └── routes.ts     # Auth, API keys, and usage routes
-├── usage/            # Usage tracking and analytics
-│   ├── service.ts    # Usage logging and aggregation
-│   └── index.ts
-└── index.ts
+packages/brighten-api/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/Api/    # API controllers
+│   │   └── Middleware/         # Auth middleware
+│   ├── Models/                 # Eloquent models
+│   ├── Providers/              # Service providers
+│   └── Services/               # Business logic
+│       └── Providers/          # AI provider implementations
+├── config/
+│   └── photova.php             # Operations and provider config
+├── database/
+│   ├── factories/              # Model factories for testing
+│   └── migrations/             # Database migrations
+├── routes/
+│   └── api.php                 # API route definitions
+└── tests/
+    └── Feature/                # Feature tests (Pest PHP)
 ```
 
 ## Key Components
 
-### Config Loader (`src/config/loader.ts`)
-Loads YAML config with environment variable interpolation (`${VAR_NAME}`). Supports `.env.local` via dotenv.
+### Controllers (`app/Http/Controllers/Api/`)
+- **AuthController** - signup, login, logout, me, update
+- **ApiKeyController** - CRUD + regenerate
+- **AssetController** - upload (file/base64), list, get, delete
+- **UsageController** - summary, timeseries, current
+- **OperationController** - AI operation execution with usage logging
+- **SystemController** - health, operations, openapi.json
 
-### OperationRouter (`src/router/index.ts`)
-Routes operations to configured providers with fallback support.
+### Middleware (`app/Http/Middleware/`)
+- **AuthenticateWithApiKey** - Validates `br_live_*` API keys via hash
+- **OptionalAuth** - Skips auth when `AUTH_ENABLED=false`
 
-### Providers (`src/providers/remote/`)
-- **ReplicateProvider** - Replicate API (background-remove, unblur, colorize, inpaint)
-- **FalProvider** - fal.ai integration (not yet configured)
-- **RemoveBgProvider** - remove.bg API (not yet configured)
+### Services (`app/Services/`)
+- **ProviderManager** - Provider registration and fallback routing
+- **Providers/BaseProvider** - Abstract base with image encode/decode
+- **Providers/ReplicateProvider** - Replicate API integration
+- **Providers/FalProvider** - Fal.ai API integration
+- **Providers/RemoveBgProvider** - Remove.bg API integration
 
-### Authentication (`src/auth/`)
-PocketBase-based authentication system:
-- **types.ts** - User, ApiKey, UsageLog, UsageDaily interfaces
-- **client.ts** - PocketBase client with typed collection helpers
-- **middleware.ts** - `requireApiKey()` middleware for API operations
-
-### Usage Tracking (`src/usage/`)
-- **service.ts** - `logUsage()`, `getUsageSummary()`, `getTimeSeries()`
-
-### Server (`src/server/index.ts`)
-Express server with endpoints:
-- `GET /` - HTML homepage with API overview
-- `GET /docs` - Interactive API documentation (Redoc)
-- `GET /dashboard` - User dashboard (when auth enabled)
-- `GET /api/health` - Health check
-- `GET /api/operations` - List available operations
-- `GET /api/openapi.json` - OpenAPI spec
-- `POST /api/v1/:operation` - Execute an operation (requires API key when auth enabled)
-
-### Routes (`src/server/routes.ts`) - When auth enabled:
-- `POST /api/auth/signup`, `/login`, `/logout`, `GET /me`, `PATCH /me`
-- `GET /api/keys`, `POST /api/keys`, `PATCH /api/keys/:id`, `DELETE /api/keys/:id`
-- `GET /api/usage/summary`, `/timeseries`, `/current`
+### Models (`app/Models/`)
+- **User** - Extended with plan, monthly_limit, verified fields
+- **ApiKey** - API key with prefix, hash, status, scopes
+- **Asset** - UUID-based asset storage with bucket support
+- **UsageLog** - Individual request logging
+- **UsageDaily** - Aggregated daily usage stats
 
 ## Configuration
 
-Config file: `config.yaml` (or `config.yml`)
+Config file: `config/photova.php`
 
-```yaml
-server:
-  port: 3001
-  host: 0.0.0.0
-
-operations:
-  background-remove:
-    provider: replicate
-    fallback: removebg
-  unblur:
-    provider: replicate
-
-providers:
-  replicate:
-    api_key: ${REPLICATE_API_KEY}
-  removebg:
-    api_key: ${REMOVEBG_API_KEY}
+```php
+return [
+    'auth' => [
+        'enabled' => env('AUTH_ENABLED', true),
+    ],
+    'operations' => [
+        'background-remove' => [
+            'provider' => 'replicate',
+            'fallback' => 'removebg',
+        ],
+        'upscale' => ['provider' => 'replicate'],
+        'unblur' => ['provider' => 'replicate'],
+        'colorize' => ['provider' => 'replicate'],
+        'inpaint' => ['provider' => 'replicate'],
+        'restore' => ['provider' => 'replicate'],
+    ],
+    'providers' => [
+        'replicate' => [
+            'api_key' => env('REPLICATE_API_KEY'),
+        ],
+        'fal' => [
+            'api_key' => env('FAL_API_KEY'),
+        ],
+        'removebg' => [
+            'api_key' => env('REMOVEBG_API_KEY'),
+        ],
+    ],
+    'storage' => [
+        'default' => 'assets',
+        'buckets' => [
+            'assets' => [
+                'disk' => 'local',
+                'path' => 'assets',
+            ],
+        ],
+    ],
+];
 ```
 
 ## Environment Variables
 
-Store secrets in `.env.local` (gitignored):
 ```
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_DATABASE=brighten
+DB_USERNAME=postgres
+DB_PASSWORD=secret
+AUTH_ENABLED=true
 REPLICATE_API_KEY=r8_xxxxx
+FAL_API_KEY=fal_xxxxx
+REMOVEBG_API_KEY=xxxxx
 ```
+
+## API Routes (22 endpoints)
+
+| Category | Endpoints |
+|----------|-----------|
+| System | `GET /api/health`, `/api/operations`, `/api/openapi.json` |
+| Auth | `POST /api/auth/signup`, `/login`, `/logout`, `GET/PATCH /api/auth/me` |
+| API Keys | `GET/POST /api/keys`, `GET/PATCH/DELETE /api/keys/{id}`, `POST /api/keys/{id}/regenerate` |
+| Usage | `GET /api/usage/summary`, `/timeseries`, `/current` |
+| Assets | `GET/POST /api/assets`, `GET/DELETE /api/assets/{id}` |
+| Operations | `POST /api/v1/{operation}` |
 
 ## Development Commands
 
 ```bash
 cd packages/brighten-api
-npm run dev          # Development server with hot reload (tsx watch)
-npm run build        # Build to dist/
-npm start            # Run built server
-npm test             # Run tests
+composer install          # Install dependencies
+cp .env.example .env      # Create env file
+php artisan key:generate  # Generate app key
+php artisan migrate       # Run migrations
+php artisan serve         # Start dev server (port 8000)
+./vendor/bin/pest         # Run tests
 ```
 
-Or from monorepo root:
-```bash
-npm run dev --workspace=packages/brighten-api
-npm run build --workspace=packages/brighten-api
-```
+## Testing
+
+Uses Pest PHP with 52 tests covering all endpoints:
+- `SystemTest` - Health, operations, OpenAPI
+- `AuthTest` - Signup, login, logout, profile
+- `ApiKeyTest` - CRUD, regenerate, authorization
+- `AssetTest` - Upload, list, get, delete, bucket filter
+- `UsageTest` - Summary, timeseries, current
+- `OperationTest` - All operations with mocked providers
 
 ## Adding a New Operation
 
-1. Add operation type to `OperationType` in `src/operations/types.ts`
-2. Add model config in the provider (e.g., `REPLICATE_MODELS` in `replicate.ts`)
-3. Add to `supportedOperations` array in the provider
-4. Add operation config to `config.yaml`
-5. Update `scripts/generate-openapi.ts`:
-   - Add operation to `ALL_OPERATIONS` array
-   - Add description in `getOperationDescription()`
-6. Regenerate OpenAPI spec: `npm run generate:openapi`
-7. Copy to brighten for local dev: `cp openapi.json ../brighten/public/`
+1. Add to `VALID_OPERATIONS` in `OperationController.php`
+2. Add operation config to `config/photova.php`
+3. Ensure provider supports the operation
+4. Add route constraint in `routes/api.php` (the `where` clause)
 
 ## Adding a New Provider
 
-1. Create new file in `src/providers/remote/`
+1. Create new file in `app/Services/Providers/`
 2. Extend `BaseProvider` class
-3. Implement `execute(operation, input)` method
-4. Export from `src/providers/index.ts`
-5. Register in `OperationRouter.initializeProviders()`
+3. Implement `execute(string $operation, string $image, array $options): array`
+4. Register in `ProviderManager::registerProviders()`
 
-## API Request/Response Format
+## API Key Format
 
-### Request
-```json
-POST /api/v1/background-remove
-{
-  "image": "data:image/png;base64,..."
-}
-```
-
-### Response
-```json
-{
-  "image": "data:image/png;base64,...",
-  "metadata": {
-    "provider": "replicate",
-    "model": "...",
-    "processingTime": 1234
-  }
-}
-```
+- Prefix: `br_live_` (8 chars) + 32 random chars = 40 chars total
+- Stored: `key_prefix` (first 20 chars) + `key_hash` (bcrypt)
+- Validation: Match prefix → verify hash
 
 ## Integration with brighten SDK
 
-The EditorUI component connects to brighten-api via the `apiEndpoint` config:
+The EditorUI component connects to the API via the `apiEndpoint` config:
 
 ```typescript
 const editor = createEditorUI({
   container: '#editor',
-  apiEndpoint: 'http://localhost:3001',  // brighten-api URL
+  apiEndpoint: 'http://localhost:8000',  // Laravel API URL
 });
 ```
 
 For local development, set `VITE_API_ENDPOINT` in `packages/brighten/.env.local`:
 ```
-VITE_API_ENDPOINT=http://localhost:3001
+VITE_API_ENDPOINT=http://localhost:8000
 ```

@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Services\Providers;
+
+use Exception;
+use Illuminate\Support\Facades\Http;
+
+class ReplicateProvider extends BaseProvider
+{
+    protected string $name = 'replicate';
+    private array $models;
+
+    public function __construct(string $apiKey, array $models = [])
+    {
+        parent::__construct($apiKey);
+        $this->models = $models;
+    }
+
+    public function execute(string $operation, string $image, array $options = []): array
+    {
+        $model = $this->models[$operation] ?? null;
+
+        if (!$model) {
+            throw new Exception("No model configured for operation '{$operation}'");
+        }
+
+        $input = $this->buildInput($operation, $image, $options);
+
+        $response = Http::withToken($this->apiKey)
+            ->timeout(120)
+            ->post('https://api.replicate.com/v1/predictions', [
+                'version' => $model,
+                'input' => $input,
+            ]);
+
+        if (!$response->successful()) {
+            throw new Exception('Replicate API error: ' . $response->body());
+        }
+
+        $prediction = $response->json();
+        $result = $this->waitForResult($prediction['id']);
+
+        return [
+            'image' => $this->fetchAndEncodeResult($result),
+            'provider' => $this->name,
+            'model' => $model,
+        ];
+    }
+
+    public function getSupportedOperations(): array
+    {
+        return array_keys($this->models);
+    }
+
+    private function buildInput(string $operation, string $image, array $options): array
+    {
+        return match ($operation) {
+            'upscale' => ['image' => $image, 'scale' => $options['scale'] ?? 2],
+            'inpaint' => [
+                'image' => $image,
+                'mask' => $options['mask'] ?? null,
+                'prompt' => $options['prompt'] ?? '',
+            ],
+            'unblur', 'restore' => ['img' => $image],
+            'colorize' => ['input_image' => $image],
+            default => ['image' => $image],
+        };
+    }
+
+    private function waitForResult(string $predictionId, int $maxWait = 300): string
+    {
+        $waited = 0;
+        $interval = 2;
+
+        while ($waited < $maxWait) {
+            $response = Http::withToken($this->apiKey)
+                ->get("https://api.replicate.com/v1/predictions/{$predictionId}");
+
+            $data = $response->json();
+
+            if ($data['status'] === 'succeeded') {
+                $output = $data['output'];
+                return is_array($output) ? $output[0] : $output;
+            }
+
+            if ($data['status'] === 'failed') {
+                throw new Exception('Replicate prediction failed: ' . ($data['error'] ?? 'Unknown error'));
+            }
+
+            sleep($interval);
+            $waited += $interval;
+        }
+
+        throw new Exception('Replicate prediction timed out');
+    }
+
+    private function fetchAndEncodeResult(string $url): string
+    {
+        $response = Http::get($url);
+
+        if (!$response->successful()) {
+            throw new Exception('Failed to fetch result image');
+        }
+
+        $contentType = $response->header('Content-Type') ?? 'image/png';
+        return $this->encodeImage($response->body(), $contentType);
+    }
+}

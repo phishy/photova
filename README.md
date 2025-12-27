@@ -40,12 +40,12 @@ pnpm add brighten
 
 ## Examples
 
-Check out the framework-specific examples in the [`examples/`](examples/) directory:
+Check out the framework-specific examples in the [`packages/brighten/examples/`](packages/brighten/examples/) directory:
 
-- [**Vanilla JS**](examples/vanilla/) - Plain HTML + JavaScript
-- [**React**](examples/react/) - React 18 + TypeScript + Vite
-- [**Vue**](examples/vue/) - Vue 3 + TypeScript + Vite
-- [**Next.js**](examples/nextjs/) - Next.js 14 (App Router)
+- [**Vanilla JS**](packages/brighten/examples/vanilla/) - Plain HTML + JavaScript
+- [**React**](packages/brighten/examples/react/) - React 18 + TypeScript + Vite
+- [**Vue**](packages/brighten/examples/vue/) - Vue 3 + TypeScript + Vite
+- [**Next.js**](packages/brighten/examples/nextjs/) - Next.js 14 (App Router)
 
 Each example includes setup instructions and demonstrates core features.
 
@@ -194,10 +194,6 @@ Brighten works in all modern browsers that support Canvas 2D and ES6.
 - Firefox 75+
 - Safari 13.1+
 - Edge 80+
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on setting up the development environment and submitting pull requests.
 
 ## License
 
