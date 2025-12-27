@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: ./packages/photova-api
-      target: production
+      dockerfile: Dockerfile
     container_name: photova-api
     restart: unless-stopped
     ports:

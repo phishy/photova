@@ -1,8 +1,5 @@
-# syntax=docker/dockerfile:1
+FROM php:8.3-fpm-alpine
 
-FROM php:8.3-fpm-alpine AS base
-
-# Install system dependencies
 RUN apk add --no-cache \
     git \
     curl \
@@ -16,7 +13,6 @@ RUN apk add --no-cache \
     nginx \
     supervisor
 
-# Configure and install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
@@ -27,60 +23,31 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         bcmath \
         opcache
 
-# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
 WORKDIR /var/www/html
 
-# ============================================
-# Development stage
-# ============================================
-FROM base AS development
-
-# Copy application files
-COPY . .
-
-# Install dependencies
-RUN composer install --no-interaction --prefer-dist
-
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-EXPOSE 8000
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
-
-# ============================================
-# Production stage
-# ============================================
-FROM base AS production
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 COPY . .
 
 RUN cp .env.example .env \
     && composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts \
-    && composer dump-autoload --optimize \
-    && rm -rf tests .git .github .env
+    && rm .env
 
-# Create storage directories and set permissions
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
     && mkdir -p bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-# Copy nginx configuration
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
-
-# Copy supervisor configuration
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
-
-RUN echo "opcache.enable=1" >> "$PHP_INI_DIR/conf.d/opcache.ini" \
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && echo "opcache.enable=1" >> "$PHP_INI_DIR/conf.d/opcache.ini" \
     && echo "opcache.memory_consumption=128" >> "$PHP_INI_DIR/conf.d/opcache.ini" \
     && echo "opcache.interned_strings_buffer=8" >> "$PHP_INI_DIR/conf.d/opcache.ini" \
     && echo "opcache.max_accelerated_files=10000" >> "$PHP_INI_DIR/conf.d/opcache.ini" \

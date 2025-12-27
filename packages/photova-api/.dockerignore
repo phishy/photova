@@ -2,8 +2,8 @@
 .github
 .gitignore
 .env
-.env.*
-!.env.example
+.env.local
+.env.testing
 node_modules
 vendor
 tests
@@ -12,9 +12,6 @@ storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
 bootstrap/cache/*
-*.md
 phpunit.xml
 .editorconfig
 .styleci.yml
-docker-compose*.yml
-Dockerfile
