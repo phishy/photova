@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: photova-api
     restart: unless-stopped
+    ports:
+      - "8001:80"
     environment:
       APP_NAME: "Photova API"
       APP_ENV: production
@@ -40,6 +42,8 @@ services:
     image: postgres:16-alpine
     container_name: photova-postgres
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_DB: photova
       POSTGRES_USER: photova
