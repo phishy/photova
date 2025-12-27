@@ -65,7 +65,7 @@ export default function PlaygroundPage() {
             showHeader: true,
             showSidebar: true,
             showPanel: true,
-            image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+            image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1600&q=80',
           });
           
           editorInstanceRef.current = editor;
