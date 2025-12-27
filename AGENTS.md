@@ -4,8 +4,8 @@
 
 Brighten is a photo editor ecosystem with two packages:
 
-1. **brighten** (`packages/brighten/`) - JavaScript/TypeScript photo editor SDK with drop-in UI component
-2. **brighten-api** (`packages/brighten-api/`) - Laravel 12/PostgreSQL media processing API (Photova)
+1. **brighten** (`packages/photova/`) - JavaScript/TypeScript photo editor SDK with drop-in UI component
+2. **brighten-api** (`packages/photova-api/`) - Laravel 12/PostgreSQL media processing API (Photova)
 
 ## Documentation Maintenance
 
@@ -83,7 +83,7 @@ brighten/
 ## Architecture
 
 ```
-packages/brighten/src/
+packages/photova/src/
 ├── core/           # Core engine (Editor, Canvas, Layers, History)
 ├── filters/        # Filter system with 15+ built-in filters
 ├── tools/          # Editing tools (Crop, Transform, Brush)
@@ -157,8 +157,8 @@ npm run lint         # Lint code
 
 All commands can be run from the monorepo root with workspace flag:
 ```bash
-npm test --workspace=packages/brighten -- --run
-npm run build --workspace=packages/brighten
+npm test --workspace=packages/photova -- --run
+npm run build --workspace=packages/photova
 ```
 
 ## Testing Requirements
@@ -246,7 +246,7 @@ Laravel 12/PostgreSQL media processing API with dashboard UI.
 ## Architecture
 
 ```
-packages/brighten-api/
+packages/photova-api/
 ├── app/
 │   ├── Http/
 │   │   ├── Controllers/Api/    # API controllers
@@ -365,7 +365,7 @@ REMOVEBG_API_KEY=xxxxx
 ## Development Commands
 
 ```bash
-cd packages/brighten-api
+cd packages/photova-api
 composer install          # Install dependencies
 cp .env.example .env      # Create env file
 php artisan key:generate  # Generate app key
@@ -415,7 +415,7 @@ const editor = createEditorUI({
 });
 ```
 
-For local development, set `VITE_API_ENDPOINT` in `packages/brighten/.env.local`:
+For local development, set `VITE_API_ENDPOINT` in `packages/photova/.env.local`:
 ```
 VITE_API_ENDPOINT=http://localhost:8000
 ```

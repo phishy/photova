@@ -246,4 +246,4 @@ The full OpenAPI specification is available at:
 GET /api/openapi.json
 ```
 
-Or view the static spec in the repository at `packages/brighten-api/openapi.json`.
+Or view the static spec in the repository at `packages/photova-api/openapi.json`.

@@ -8,7 +8,7 @@ Brighten is a powerful, extensible JavaScript/TypeScript photo editor SDK for th
 
 **[Documentation](https://phishy.github.io/brighten/)** | **[Live Demo](https://phishy.github.io/brighten/demo/)** | **[API Reference](https://phishy.github.io/brighten/api/editor-ui/)**
 
-![Brighten Screenshot](packages/brighten/screenshot.png)
+![Brighten Screenshot](packages/photova/screenshot.png)
 
 ## Features
 
@@ -40,12 +40,12 @@ pnpm add brighten
 
 ## Examples
 
-Check out the framework-specific examples in the [`packages/brighten/examples/`](packages/brighten/examples/) directory:
+Check out the framework-specific examples in the [`packages/photova/examples/`](packages/photova/examples/) directory:
 
-- [**Vanilla JS**](packages/brighten/examples/vanilla/) - Plain HTML + JavaScript
-- [**React**](packages/brighten/examples/react/) - React 18 + TypeScript + Vite
-- [**Vue**](packages/brighten/examples/vue/) - Vue 3 + TypeScript + Vite
-- [**Next.js**](packages/brighten/examples/nextjs/) - Next.js 14 (App Router)
+- [**Vanilla JS**](packages/photova/examples/vanilla/) - Plain HTML + JavaScript
+- [**React**](packages/photova/examples/react/) - React 18 + TypeScript + Vite
+- [**Vue**](packages/photova/examples/vue/) - Vue 3 + TypeScript + Vite
+- [**Next.js**](packages/photova/examples/nextjs/) - Next.js 14 (App Router)
 
 Each example includes setup instructions and demonstrates core features.
 

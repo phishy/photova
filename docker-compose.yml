@@ -1,22 +1,61 @@
 services:
-  # Photova API (Laravel) database
+  api:
+    build:
+      context: ./packages/photova-api
+      target: production
+    container_name: photova-api
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      APP_NAME: "Photova API"
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      APP_KEY: ${APP_KEY:-}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: photova
+      DB_USERNAME: photova
+      DB_PASSWORD: ${DB_PASSWORD:-photova}
+      AUTH_ENABLED: ${AUTH_ENABLED:-true}
+      REPLICATE_API_KEY: ${REPLICATE_API_KEY:-}
+      FAL_API_KEY: ${FAL_API_KEY:-}
+      REMOVEBG_API_KEY: ${REMOVEBG_API_KEY:-}
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+    volumes:
+      - api_storage:/var/www/html/storage/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   postgres:
     image: postgres:16-alpine
-    container_name: brighten-postgres
+    container_name: photova-postgres
     restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: brighten
-      POSTGRES_USER: brighten
-      POSTGRES_PASSWORD: brighten
+      POSTGRES_DB: photova
+      POSTGRES_USER: photova
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-photova}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U brighten -d brighten"]
+      test: ["CMD-SHELL", "pg_isready -U photova -d photova"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
   postgres_data:
+  api_storage:

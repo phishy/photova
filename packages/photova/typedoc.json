@@ -1,0 +1,22 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/index.ts"],
+  "out": "./docs",
+  "name": "Brighten SDK",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "includeVersion": true,
+  "navigationLinks": {
+    "GitHub": "https://github.com/phishy/photova",
+    "Demo": "https://phishy.github.io/brighten/"
+  },
+  "plugin": [],
+  "theme": "default",
+  "validation": {
+    "notExported": false,
+    "invalidLink": false,
+    "notDocumented": false
+  }
+}

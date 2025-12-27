@@ -42,7 +42,7 @@ const editor = new EditorUI({
 
 [Get Started :material-arrow-right:](getting-started/installation.md){ .md-button .md-button--primary }
 [Try the Demo :material-play:](demo/){ .md-button }
-[View on GitHub :material-github:](https://github.com/phishy/brighten){ .md-button }
+[View on GitHub :material-github:](https://github.com/phishy/photova){ .md-button }
 
 ## Links
 

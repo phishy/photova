@@ -31,7 +31,7 @@ Brighten includes AI-powered editing features through the companion **Brighten A
 ### 1. Start the Brighten API Server
 
 ```bash
-cd packages/brighten-api
+cd packages/photova-api
 
 # Configure your API keys
 cp config.example.yaml config.yaml
@@ -92,5 +92,5 @@ const result = await response.json();
 
 ## Next Steps
 
-- [Brighten API Setup](brighten-api.md) - Detailed server configuration
+- [Photova API Setup](photova-api.md) - Detailed server configuration
 - [API Endpoints](endpoints.md) - Full endpoint reference

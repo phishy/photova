@@ -41,7 +41,7 @@ export default ImageEditor;
 ```
 
 !!! tip "Full Example"
-    See the complete React example in [`examples/react/`](https://github.com/phishy/brighten/tree/main/packages/brighten/examples/react)
+    See the complete React example in [`examples/react/`](https://github.com/phishy/photova/tree/main/packages/photova/examples/react)
 
 ## Vue 3
 
@@ -89,7 +89,7 @@ onUnmounted(() => {
 ```
 
 !!! tip "Full Example"
-    See the complete Vue example in [`examples/vue/`](https://github.com/phishy/brighten/tree/main/packages/brighten/examples/vue)
+    See the complete Vue example in [`examples/vue/`](https://github.com/phishy/photova/tree/main/packages/photova/examples/vue)
 
 ## Next.js (App Router)
 
@@ -135,7 +135,7 @@ export default function ImageEditor({ image, onExport }: Props) {
     Brighten uses browser APIs (Canvas, DOM) and must be imported dynamically in Next.js to avoid server-side rendering errors.
 
 !!! tip "Full Example"
-    See the complete Next.js example in [`examples/nextjs/`](https://github.com/phishy/brighten/tree/main/packages/brighten/examples/nextjs)
+    See the complete Next.js example in [`examples/nextjs/`](https://github.com/phishy/photova/tree/main/packages/photova/examples/nextjs)
 
 ## Vanilla JavaScript
 
@@ -170,4 +170,4 @@ export default function ImageEditor({ image, onExport }: Props) {
 ```
 
 !!! tip "Full Example"
-    See the complete vanilla example in [`examples/vanilla/`](https://github.com/phishy/brighten/tree/main/packages/brighten/examples/vanilla)
+    See the complete vanilla example in [`examples/vanilla/`](https://github.com/phishy/photova/tree/main/packages/photova/examples/vanilla)

@@ -84,4 +84,4 @@ Some tools require additional configuration:
 | `layers` | Works standalone |
 
 !!! note "AI Features"
-    The `ai` tab will show buttons for background removal, colorize, restore, etc., but these require a running [Brighten API](../ai/brighten-api.md) server to function.
+    The `ai` tab will show buttons for background removal, colorize, restore, etc., but these require a running [Photova API](../ai/photova-api.md) server to function.

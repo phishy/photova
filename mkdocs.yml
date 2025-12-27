@@ -1,7 +1,7 @@
 site_name: Brighten
 site_description: The AI-native image editor SDK
 site_url: https://phishy.github.io/brighten/
-repo_url: https://github.com/phishy/brighten
+repo_url: https://github.com/phishy/photova
 repo_name: phishy/brighten
 
 theme:
@@ -77,7 +77,7 @@ nav:
     - LayerManager: api/layer-manager.md
   - AI Features:
     - Overview: ai/overview.md
-    - Brighten API: ai/brighten-api.md
+    - Photova API: ai/photova-api.md
     - Endpoints: ai/endpoints.md
   - About:
     - Competition: about/competition.md
@@ -85,7 +85,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/phishy/brighten
+      link: https://github.com/phishy/photova
     - icon: fontawesome/brands/npm
       link: https://www.npmjs.com/package/brighten
 
