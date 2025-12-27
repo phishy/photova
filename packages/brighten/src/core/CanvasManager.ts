@@ -99,9 +99,21 @@ export class CanvasManager extends EventEmitter<EditorEvents> {
    * Fit canvas to view
    */
   fitToView(): void {
+    if (this.displaySize.width <= 0 || this.displaySize.height <= 0) {
+      return;
+    }
+    if (this.canvasSize.width <= 0 || this.canvasSize.height <= 0) {
+      return;
+    }
+
     const padding = 40;
     const availableWidth = this.displaySize.width - padding * 2;
     const availableHeight = this.displaySize.height - padding * 2;
+
+    if (availableWidth <= 0 || availableHeight <= 0) {
+      this.zoom = 0.1;
+      return;
+    }
 
     const scaleX = availableWidth / this.canvasSize.width;
     const scaleY = availableHeight / this.canvasSize.height;
