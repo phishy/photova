@@ -74,7 +74,7 @@ function CodeBlock({ code, language }: { code: string; language: 'js' | 'curl' }
   const highlighted = language === 'js' ? highlightJS(code) : highlightCurl(code);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div className="code-block" style={{ position: 'relative' }}>
       <button
         onClick={copyToClipboard}
         style={{
@@ -191,6 +191,16 @@ export default function HomePage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#000' }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 640px) {
+          .nav-links { display: none !important; }
+          .code-block pre { font-size: 11px !important; padding: 16px !important; }
+          .hero-title { font-size: 32px !important; }
+          .hero-subtitle { font-size: 28px !important; }
+          .section-title { font-size: 28px !important; }
+          .popular-badge { top: -10px !important; font-size: 10px !important; padding: 3px 10px !important; }
+        }
+      `}} />
       <header style={{
         position: 'fixed',
         top: 0,
@@ -211,9 +221,9 @@ export default function HomePage() {
             <span>Brighten</span>
           </a>
           <nav style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-            <a href="#features" style={{ fontSize: 14, color: '#888', transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#888'}>Features</a>
-            <a href="#pricing" style={{ fontSize: 14, color: '#888', transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#888'}>Pricing</a>
-            <a href="/docs" style={{ fontSize: 14, color: '#888', transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#888'}>Docs</a>
+            <a href="#features" className="nav-links" style={{ fontSize: 14, color: '#888', transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#888'}>Features</a>
+            <a href="#pricing" className="nav-links" style={{ fontSize: 14, color: '#888', transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#888'}>Pricing</a>
+            <a href="/docs" className="nav-links" style={{ fontSize: 14, color: '#888', transition: 'color 0.15s' }} onMouseEnter={e => e.currentTarget.style.color = '#fff'} onMouseLeave={e => e.currentTarget.style.color = '#888'}>Docs</a>
 {isLoggedIn ? (
               <a
                 href="/dashboard"
@@ -662,7 +672,7 @@ export default function HomePage() {
                 }}
               >
                 {plan.popular && (
-                  <div style={{
+                  <div className="popular-badge" style={{
                     position: 'absolute',
                     top: -12,
                     left: '50%',
