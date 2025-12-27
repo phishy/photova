@@ -86,7 +86,7 @@ export async function GET() {
                 letterSpacing: '-0.03em',
               }}
             >
-              AI image processing
+              Powerful AI image editing APIs
             </span>
             <span
               style={{
@@ -98,7 +98,7 @@ export async function GET() {
                 letterSpacing: '-0.03em',
               }}
             >
-              in one API call
+              built for developers
             </span>
           </div>
 

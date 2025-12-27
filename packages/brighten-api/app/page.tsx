@@ -395,7 +395,7 @@ export default function HomePage() {
             lineHeight: 1.1,
             marginBottom: 24,
           }}>
-            AI image processing
+            AI image editing APIs
             <br />
             <span style={{
               background: 'linear-gradient(135deg, #0070f3 0%, #00d4ff 50%, #7928ca 100%)',
@@ -404,7 +404,7 @@ export default function HomePage() {
               WebkitTextFillColor: 'transparent',
               animation: 'gradient-x 8s linear infinite',
             }}>
-              in one API call
+              built for developers
             </span>
           </h1>
 
@@ -415,7 +415,7 @@ export default function HomePage() {
             margin: '0 auto 40px',
             lineHeight: 1.6,
           }}>
-            Background removal, upscaling, restoration, and more. Built for developers who ship fast.
+            Background removal, upscaling, restoration, colorization, and more.
           </p>
 
           <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>

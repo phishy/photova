@@ -6,11 +6,11 @@ const ogImageUrl = `${siteUrl}/api/og`;
 
 export const metadata: Metadata = {
   title: 'Brighten API',
-  description: 'AI image processing in one API call. Background removal, upscaling, restoration, colorization, and more.',
+  description: 'Powerful AI image editing APIs built for developers. Background removal, upscaling, restoration, colorization, and more.',
   metadataBase: new URL(siteUrl),
   openGraph: {
     title: 'Brighten API',
-    description: 'AI image processing in one API call. Background removal, upscaling, restoration, and more.',
+    description: 'Powerful AI image editing APIs built for developers. Background removal, upscaling, restoration, and more.',
     url: siteUrl,
     siteName: 'Brighten',
     images: [
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
         url: ogImageUrl,
         width: 1200,
         height: 630,
-        alt: 'Brighten API - AI image processing in one API call',
+        alt: 'Brighten API - Powerful AI image editing APIs built for developers',
       },
     ],
     locale: 'en_US',
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Brighten API',
-    description: 'AI image processing in one API call. Background removal, upscaling, restoration, and more.',
+    description: 'Powerful AI image editing APIs built for developers. Background removal, upscaling, restoration, and more.',
     images: [ogImageUrl],
   },
 };

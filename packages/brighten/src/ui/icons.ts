@@ -173,4 +173,8 @@ export const icons = {
     <path d="M7 21h10"/>
     <path d="M5.5 13.5L12 7l6.5 6.5a2.12 2.12 0 010 3l-3 3a2.12 2.12 0 01-3 0l-7-7a2.12 2.12 0 010-3z"/>
   </svg>`,
+
+  expand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+  </svg>`,
 };

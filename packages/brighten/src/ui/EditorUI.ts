@@ -539,6 +539,9 @@ export class EditorUI {
             <button class="brighten-btn" data-action="unblur" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.focus}</span> Unblur / Enhance
             </button>
+            <button class="brighten-btn" data-action="upscale" style="width: 100%; justify-content: flex-start;">
+              <span style="${iconStyle}">${icons.expand}</span> Upscale 4x
+            </button>
             <button class="brighten-btn" data-action="colorize" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.palette}</span> Colorize
             </button>
@@ -1042,6 +1045,9 @@ export class EditorUI {
           break;
         case 'unblur':
           this.unblur();
+          break;
+        case 'upscale':
+          this.upscale();
           break;
         case 'colorize':
           this.colorize();
@@ -1800,6 +1806,76 @@ export class EditorUI {
       console.error('Unblur failed:', error);
       resetButton();
       alert(error instanceof Error ? error.message : 'Unblur failed');
+    }
+  }
+
+  private async upscale(): Promise<void> {
+    if (!this.config.apiEndpoint) {
+      console.error('API endpoint not configured');
+      return;
+    }
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    const source = imageLayer.source;
+    const canvas = document.createElement('canvas');
+    canvas.width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    canvas.height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0);
+    const base64Image = canvas.toDataURL('image/png');
+
+    const btn = this.root.querySelector('[data-action="upscale"]') as HTMLButtonElement;
+    const resetButton = () => {
+      this.setAiProcessing(false);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `${icons.expand} Upscale 4x`;
+      }
+    };
+
+    this.setAiProcessing(true);
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `${icons.expand} Processing...`;
+    }
+
+    try {
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/upscale`, {
+        method: 'POST',
+        headers: this.getApiHeaders(),
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upscale image');
+      }
+
+      const result = await response.json();
+      
+      const img = new Image();
+      img.onload = () => {
+        this.editor.getCanvasManager().setCanvasSize({
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+        });
+        this.editor.getLayerManager().updateLayer(imageLayer.id, { source: img });
+        this.editor.saveToHistory('Upscale image 4x');
+        this.originalImageData = null;
+        resetButton();
+      };
+      img.onerror = () => {
+        resetButton();
+        alert('Failed to load processed image');
+      };
+      img.src = result.image;
+    } catch (error) {
+      console.error('Upscale failed:', error);
+      resetButton();
+      alert(error instanceof Error ? error.message : 'Upscale failed');
     }
   }
 
