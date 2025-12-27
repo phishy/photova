@@ -100,6 +100,8 @@ export const users = {
   },
 
   async authenticate(email: string, password: string) {
+    // User auth replaces the authStore token, so we need to re-authenticate as admin next time
+    adminAuthenticated = false;
     return getPocketBase().collection('users').authWithPassword(email, password);
   },
 };
