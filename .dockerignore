@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+packages/photova/node_modules
+packages/photova-api/vendor
+packages/photova-api/node_modules
+packages/photova-api/.env
+packages/photova-api/storage/logs/*
+packages/photova-api/storage/framework/cache/*
+packages/photova-api/storage/framework/sessions/*
+packages/photova-api/storage/framework/views/*

@@ -1,7 +1,7 @@
 services:
   api:
     build:
-      context: ./packages/photova-api
+      context: .
       dockerfile: Dockerfile
     container_name: photova-api
     restart: unless-stopped
