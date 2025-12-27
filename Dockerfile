@@ -31,9 +31,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 
 COPY packages/photova-api/ .
 
-RUN ls -la && ls -la .env* && cp .env.example .env \
-    && composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts \
-    && rm .env
+RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts
 
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
