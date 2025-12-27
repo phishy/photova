@@ -58,8 +58,10 @@ FROM base AS production
 
 COPY . .
 
-RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader \
-    && rm -rf tests .git .github
+RUN cp .env.example .env \
+    && composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts \
+    && composer dump-autoload --optimize \
+    && rm -rf tests .git .github .env
 
 # Create storage directories and set permissions
 RUN mkdir -p storage/framework/{sessions,views,cache} \
