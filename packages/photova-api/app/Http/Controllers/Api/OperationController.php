@@ -103,9 +103,9 @@ class OperationController extends Controller
             ],
             ['user_id', 'date', 'operation'],
             [
-                'request_count' => DB::raw('request_count + 1'),
-                'error_count' => DB::raw('error_count + ' . ($status === 'error' ? 1 : 0)),
-                'total_latency_ms' => DB::raw('total_latency_ms + ' . $latencyMs),
+                'request_count' => DB::raw('usage_daily.request_count + 1'),
+                'error_count' => DB::raw('usage_daily.error_count + ' . ($status === 'error' ? 1 : 0)),
+                'total_latency_ms' => DB::raw('usage_daily.total_latency_ms + ' . $latencyMs),
             ]
         );
     }
