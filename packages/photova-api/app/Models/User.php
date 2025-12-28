@@ -87,6 +87,11 @@ class User extends Authenticatable
         return $this->hasMany(Tag::class);
     }
 
+    public function storages(): HasMany
+    {
+        return $this->hasMany(UserStorage::class);
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === self::ROLE_SUPERADMIN;

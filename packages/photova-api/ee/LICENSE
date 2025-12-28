@@ -1,0 +1,18 @@
+Photova Enterprise License
+
+Copyright (c) 2025 Photova
+
+This directory contains proprietary enterprise features that require a valid 
+Photova Enterprise license to use in production.
+
+You MAY:
+- View and study the source code
+- Run the code for development and testing purposes
+- Modify the code for evaluation purposes
+
+You MAY NOT:
+- Use the code in production without a valid enterprise license
+- Redistribute the code or derivative works
+- Remove or modify this license notice
+
+For licensing inquiries, contact: enterprise@photova.dev

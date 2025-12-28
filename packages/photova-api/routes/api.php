@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FolderController;
 use App\Http\Controllers\Api\OperationController;
 use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UsageController;
@@ -65,6 +66,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/tags/{tag}', [TagController::class, 'update']);
     Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
     Route::post('/assets/{asset}/tags', [TagController::class, 'setAssetTags']);
+
+    Route::get('/storages/drivers', [StorageController::class, 'drivers']);
+    Route::get('/storages', [StorageController::class, 'index']);
+    Route::post('/storages', [StorageController::class, 'store']);
+    Route::get('/storages/{storage}', [StorageController::class, 'show']);
+    Route::patch('/storages/{storage}', [StorageController::class, 'update']);
+    Route::delete('/storages/{storage}', [StorageController::class, 'destroy']);
+    Route::post('/storages/{storage}/test', [StorageController::class, 'test']);
+    Route::post('/storages/{storage}/scan', [StorageController::class, 'scan']);
+    Route::post('/storages/{storage}/import', [StorageController::class, 'import']);
 });
 
 Route::prefix('v1')->middleware(OptionalAuth::class)->group(function () {
