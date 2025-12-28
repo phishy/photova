@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>API Documentation - Photova</title>
-    <meta name="description" content="Complete API documentation for Photova - AI image editing APIs for developers.">
+    <meta name="description" content="Complete API documentation for Photova - AI media infrastructure with asset management, processing APIs, and embeddable editor.">
 
     <!-- OpenGraph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url('/docs') }}">
     <meta property="og:title" content="API Documentation - Photova">
-    <meta property="og:description" content="Complete API documentation for Photova - AI image editing APIs for developers.">
+    <meta property="og:description" content="Complete API documentation for Photova - AI media infrastructure with asset management, processing APIs, and embeddable editor.">
     <meta property="og:image" content="{{ url('/og-image.png') }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -19,7 +19,7 @@
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="API Documentation - Photova">
-    <meta name="twitter:description" content="Complete API documentation for Photova - AI image editing APIs for developers.">
+    <meta name="twitter:description" content="Complete API documentation for Photova - AI media infrastructure with asset management, processing APIs, and embeddable editor.">
     <meta name="twitter:image" content="{{ url('/og-image.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>

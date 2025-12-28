@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Photova API - AI Image Editing for Developers</title>
-    <meta name="description" content="Background removal, upscaling, restoration, colorization, and more. Simple API, powerful results.">
+    <title>Photova - Open Source AI Media Infrastructure</title>
+    <meta name="description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
     
     <!-- OpenGraph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url('/') }}">
-    <meta property="og:title" content="Photova API - AI Image Editing for Developers">
-    <meta property="og:description" content="Background removal, upscaling, restoration, colorization, and more. Simple API, powerful results.">
+    <meta property="og:title" content="Photova - Open Source AI Media Infrastructure">
+    <meta property="og:description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
     <meta property="og:image" content="{{ url('/og-image.png') }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -19,8 +19,8 @@
     
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Photova API - AI Image Editing for Developers">
-    <meta name="twitter:description" content="Background removal, upscaling, restoration, colorization, and more. Simple API, powerful results.">
+    <meta name="twitter:title" content="Photova - Open Source AI Media Infrastructure">
+    <meta name="twitter:description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
     <meta name="twitter:image" content="{{ url('/og-image.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -96,16 +96,16 @@
         <div class="relative z-10 text-center max-w-4xl">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-sm text-gray-400 mb-8">
                 <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse-slow"></span>
-                Now in public beta
+                Open source + managed cloud
             </div>
 
             <h1 class="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
-                AI image editing APIs
+                AI media infrastructure
                 <br>
-                <span class="bg-gradient-to-r from-blue-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent animate-gradient">built for developers</span>
+                <span class="bg-gradient-to-r from-blue-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent animate-gradient">that ships wherever you do</span>
             </h1>
 
-            <p class="text-lg md:text-xl text-gray-400 max-w-xl mx-auto mb-10 leading-relaxed">Background removal, upscaling, restoration, colorization, and more.</p>
+            <p class="text-lg md:text-xl text-gray-400 max-w-xl mx-auto mb-10 leading-relaxed">Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.</p>
 
             <div class="flex gap-4 justify-center flex-wrap">
                 <template x-if="isLoggedIn">
@@ -289,6 +289,7 @@
                     { id: 'colorize', name: 'Colorize', desc: 'Add color to B&W images' },
                     { id: 'unblur', name: 'Deblur', desc: 'Sharpen blurry images' },
                     { id: 'inpaint', name: 'Object Removal', desc: 'Remove unwanted objects' },
+                    { id: 'analyze', name: 'Analyze', desc: 'AI-powered image captioning' },
                 ],
                 opGradients: [
                     'bg-gradient-to-br from-blue-500 to-cyan-400',
@@ -297,8 +298,9 @@
                     'bg-gradient-to-br from-cyan-400 to-purple-500',
                     'bg-gradient-to-br from-orange-400 to-pink-500',
                     'bg-gradient-to-br from-green-400 to-blue-500',
+                    'bg-gradient-to-br from-yellow-400 to-orange-500',
                 ],
-                opIcons: ['✂️', '🔍', '🖼️', '🎨', '✨', '🧹'],
+                opIcons: ['✂️', '🔍', '🖼️', '🎨', '✨', '🧹', '🧠'],
                 plans: [
                     { name: 'Free', price: '$0', period: '/month', requests: '100 requests/mo', features: ['All operations', 'API access', 'Community support'], cta: 'Get started' },
                     { name: 'Pro', price: '$29', period: '/month', requests: '10,000 requests/mo', features: ['All operations', 'Priority processing', 'Email support', 'Webhooks'], popular: true, cta: 'Get started' },
