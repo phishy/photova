@@ -6,6 +6,22 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Photova API - AI Image Editing for Developers</title>
     <meta name="description" content="Background removal, upscaling, restoration, colorization, and more. Simple API, powerful results.">
+    
+    <!-- OpenGraph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:title" content="Photova API - AI Image Editing for Developers">
+    <meta property="og:description" content="Background removal, upscaling, restoration, colorization, and more. Simple API, powerful results.">
+    <meta property="og:image" content="{{ url('/og-image.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Photova">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Photova API - AI Image Editing for Developers">
+    <meta name="twitter:description" content="Background removal, upscaling, restoration, colorization, and more. Simple API, powerful results.">
+    <meta name="twitter:image" content="{{ url('/og-image.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>window.csrfToken = '{{ csrf_token() }}';</script>
