@@ -347,7 +347,7 @@
                             const signupRes = await fetch('/api/auth/signup', {
                                 method: 'POST',
                                 headers,
-                                body: JSON.stringify({ email: this.email, password: this.password, name: this.name || this.email.split('@')[0] }),
+                                body: JSON.stringify({ email: this.email, password: this.password, password_confirmation: this.password, name: this.name || this.email.split('@')[0] }),
                                 credentials: 'include',
                             });
                             if (!signupRes.ok) throw new Error((await signupRes.json()).error || 'Signup failed');
