@@ -282,3 +282,91 @@ test('auth can be disabled via config', function () {
 
     $response->assertOk();
 });
+
+test('analyze operation returns caption instead of image', function () {
+    $user = User::factory()->create();
+    $apiKey = ApiKey::factory()->create(['user_id' => $user->id]);
+
+    $this->mock(ProviderManager::class, function (MockInterface $mock) {
+        $mock->shouldReceive('execute')
+            ->once()
+            ->with('analyze', 'data:image/png;base64,iVBORw0KGgo=', [])
+            ->andReturn([
+                'caption' => 'A photo of a cat sitting on a couch',
+                'provider' => 'replicate',
+                'model' => 'salesforce/blip',
+            ]);
+    });
+
+    $response = $this->withHeader('Authorization', "Bearer {$apiKey->key}")
+        ->postJson('/api/v1/analyze', [
+            'image' => 'data:image/png;base64,iVBORw0KGgo=',
+        ]);
+
+    $response->assertOk()
+        ->assertJsonStructure([
+            'caption',
+            'metadata' => ['provider', 'model', 'processingTime', 'requestId'],
+        ])
+        ->assertJsonPath('caption', 'A photo of a cat sitting on a couch')
+        ->assertJsonPath('metadata.provider', 'replicate');
+});
+
+test('analyze operation with task option passes to provider', function () {
+    $user = User::factory()->create();
+    $apiKey = ApiKey::factory()->create(['user_id' => $user->id]);
+
+    $this->mock(ProviderManager::class, function (MockInterface $mock) {
+        $mock->shouldReceive('execute')
+            ->once()
+            ->with('analyze', 'data:image/png;base64,iVBORw0KGgo=', ['task' => 'visual_question_answering', 'question' => 'What color is the cat?'])
+            ->andReturn([
+                'caption' => 'The cat is orange',
+                'provider' => 'replicate',
+                'model' => 'salesforce/blip',
+            ]);
+    });
+
+    $response = $this->withHeader('Authorization', "Bearer {$apiKey->key}")
+        ->postJson('/api/v1/analyze', [
+            'image' => 'data:image/png;base64,iVBORw0KGgo=',
+            'options' => [
+                'task' => 'visual_question_answering',
+                'question' => 'What color is the cat?',
+            ],
+        ]);
+
+    $response->assertOk()
+        ->assertJsonPath('caption', 'The cat is orange');
+});
+
+test('analyze operation logs usage', function () {
+    $user = User::factory()->create();
+    $apiKey = ApiKey::factory()->create(['user_id' => $user->id]);
+
+    $this->mock(ProviderManager::class, function (MockInterface $mock) {
+        $mock->shouldReceive('execute')
+            ->once()
+            ->andReturn([
+                'caption' => 'A beautiful sunset',
+                'provider' => 'replicate',
+            ]);
+    });
+
+    $this->withHeader('Authorization', "Bearer {$apiKey->key}")
+        ->postJson('/api/v1/analyze', [
+            'image' => 'data:image/png;base64,iVBORw0KGgo=',
+        ]);
+
+    $this->assertDatabaseHas('usage_logs', [
+        'user_id' => $user->id,
+        'api_key_id' => $apiKey->id,
+        'operation' => 'analyze',
+        'status' => 'success',
+    ]);
+
+    $this->assertDatabaseHas('usage_daily', [
+        'user_id' => $user->id,
+        'operation' => 'analyze',
+    ]);
+});

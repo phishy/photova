@@ -10,6 +10,8 @@ class ReplicateProvider extends BaseProvider
     protected string $name = 'replicate';
     private array $models;
 
+    private const ANALYSIS_OPERATIONS = ['analyze'];
+
     public function __construct(string $apiKey, array $models = [])
     {
         parent::__construct($apiKey);
@@ -40,6 +42,15 @@ class ReplicateProvider extends BaseProvider
         $prediction = $response->json();
         $result = $this->waitForResult($prediction['id']);
 
+        // Analysis operations return text, not images
+        if (in_array($operation, self::ANALYSIS_OPERATIONS)) {
+            return [
+                'caption' => $result,
+                'provider' => $this->name,
+                'model' => $model,
+            ];
+        }
+
         return [
             'image' => $this->fetchAndEncodeResult($result),
             'provider' => $this->name,
@@ -63,6 +74,11 @@ class ReplicateProvider extends BaseProvider
             ],
             'unblur', 'restore' => ['img' => $image],
             'colorize' => ['input_image' => $image],
+            'analyze' => array_filter([
+                'image' => $image,
+                'task' => $options['task'] ?? 'image_captioning',
+                'question' => $options['question'] ?? null,
+            ], fn($v) => $v !== null),
             default => ['image' => $image],
         };
     }

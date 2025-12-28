@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/assets', [AssetController::class, 'store']);
     Route::post('/assets/move', [AssetController::class, 'move']);
     Route::get('/assets/{asset}', [AssetController::class, 'show']);
+    Route::patch('/assets/{asset}', [AssetController::class, 'update']);
     Route::post('/assets/{asset}/share', [AssetController::class, 'share']);
     Route::delete('/assets/{asset}', [AssetController::class, 'destroy']);
 
@@ -66,5 +67,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::prefix('v1')->middleware(OptionalAuth::class)->group(function () {
     Route::post('/{operation}', [OperationController::class, 'execute'])
-        ->where('operation', 'background-remove|upscale|unblur|colorize|inpaint|restore');
+        ->where('operation', 'background-remove|upscale|unblur|colorize|inpaint|restore|analyze');
 });

@@ -34,7 +34,7 @@
         <!-- Mobile Header -->
         <header class="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0d1117] border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
             <a href="/" class="flex items-center gap-2 text-[15px] font-semibold">
-                <span class="text-lg">☀️</span>
+                <svg class="w-5 h-5 text-[#58a6ff]" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <span>Photova</span>
             </a>
             <button @click="sidebarOpen = !sidebarOpen" class="p-2 text-[#8b949e] hover:text-white transition-colors">
@@ -65,7 +65,7 @@
         >
             <div class="flex items-center justify-between mb-8 px-2">
                 <a href="/" class="flex items-center gap-2 text-[15px] font-semibold">
-                    <span class="text-lg">☀️</span>
+                    <svg class="w-5 h-5 text-[#58a6ff]" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                     <span>Photova</span>
                 </a>
                 <button @click="sidebarOpen = false" class="md:hidden p-1 text-[#8b949e] hover:text-white transition-colors">

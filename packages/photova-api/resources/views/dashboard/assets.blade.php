@@ -6,7 +6,9 @@
 <div 
     x-data="assetsPage()" 
     x-init="init()" 
-    @keydown.escape.window="closeLightbox(); showCreateFolder = false; showMoveModal = false; showTagManager = false; showTagAssetModal = false"
+    @keydown.escape.window="closeLightbox(); showCreateFolder = false; showMoveModal = false; showTagManager = false; showTagAssetModal = false; showDetailsModal = false; confirmModal.show = false"
+    @keydown.arrow-left.window="lightboxIndex !== null && goPrev()"
+    @keydown.arrow-right.window="lightboxIndex !== null && goNext()"
     @drop.prevent="handleDrop($event)"
     @dragover.prevent="dragOver = true"
     @dragleave.prevent="dragOver = false"
@@ -134,8 +136,8 @@
             </svg>
             <input
                 type="text"
-                x-model.debounce.300ms="searchQuery"
-                @input="searchAssets()"
+                x-model="searchQuery"
+                @input.debounce.300ms="searchAssets()"
                 placeholder="Search files..."
                 class="w-full pl-10 pr-8 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm placeholder-[#8b949e] focus:outline-none focus:border-[#58a6ff]"
             >
@@ -207,6 +209,56 @@
         </div>
     </template>
 
+    <!-- Bulk Actions Bar -->
+    <template x-if="selectedAssets.length > 0">
+        <div class="flex items-center justify-between gap-4 mb-4 px-4 py-3 bg-[#161b22] border border-[#30363d] rounded-lg">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <button
+                        @click="allSelected ? deselectAll() : selectAll()"
+                        class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                        :class="allSelected 
+                            ? 'bg-[#2563eb] border border-[#2563eb]' 
+                            : someSelected 
+                                ? 'bg-[#2563eb]/50 border border-[#2563eb]' 
+                                : 'bg-transparent border-2 border-[#484f58] hover:border-[#8b949e]'"
+                    >
+                        <svg x-show="allSelected || someSelected" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </button>
+                    <span class="text-[#c9d1d9] text-sm font-medium">
+                        <span x-text="selectedAssets.length"></span> selected
+                    </span>
+                </div>
+                <button 
+                    @click="deselectAll()" 
+                    class="text-[#58a6ff] text-sm hover:underline"
+                >Clear selection</button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button
+                    @click="openBulkMoveModal()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm transition-colors"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    Move
+                </button>
+                <button
+                    @click="bulkDelete()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-[#f8514926] hover:bg-[#f8514940] border border-[#f8514966] rounded-md text-[#f85149] text-sm transition-colors"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </template>
+
     <!-- Loading State -->
     <template x-if="loading">
         <div class="flex items-center justify-center py-20">
@@ -237,19 +289,43 @@
             <!-- Grid View -->
             <template x-if="viewMode === 'grid'">
                 <div>
-                    <!-- Folders Grid (hidden when filtering by tags - global search) -->
-                    <template x-if="folders.length > 0 && selectedTags.length === 0">
+                    <!-- Folders Grid (hidden during search or tag filtering) -->
+                    <template x-if="(folders.length > 0 || currentFolderId) && !searchQuery.trim() && selectedTags.length === 0">
                         <div class="mb-6">
                             <div class="text-xs text-[#8b949e] uppercase tracking-wide mb-3">Folders</div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                                <!-- Parent Folder (..) -->
+                                <template x-if="currentFolderId">
+                                    <div 
+                                        @click="navigateToFolder(parentFolderId)"
+                                        @dragover.prevent="dropTargetFolderId = 'parent'"
+                                        @dragenter.prevent="dropTargetFolderId = 'parent'"
+                                        @dragleave.prevent="dropTargetFolderId = null"
+                                        @drop.prevent="handleDropOnFolder(parentFolderId)"
+                                        class="group bg-[#161b22] rounded-lg border p-3 cursor-pointer transition-all"
+                                        :class="dropTargetFolderId === 'parent' ? 'border-[#58a6ff] bg-[#58a6ff]/10 scale-105' : 'border-[#30363d] hover:border-[#8b949e]/50'"
+                                    >
+                                        <div class="flex items-center gap-3">
+                                            <svg class="w-8 h-8 transition-colors" :class="dropTargetFolderId === 'parent' ? 'text-[#58a6ff]' : 'text-[#8b949e] group-hover:text-[#58a6ff]'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                            </svg>
+                                            <span class="text-[#c9d1d9] text-sm font-medium">..</span>
+                                        </div>
+                                    </div>
+                                </template>
                                 <template x-for="folder in folders" :key="folder.id">
                                     <div 
                                         @click="navigateToFolder(folder.id)"
                                         @contextmenu.prevent="openFolderMenu($event, folder)"
-                                        class="group bg-[#161b22] rounded-lg border border-[#30363d] hover:border-[#8b949e]/50 p-3 cursor-pointer transition-colors"
+                                        @dragover.prevent="dropTargetFolderId = folder.id"
+                                        @dragenter.prevent="dropTargetFolderId = folder.id"
+                                        @dragleave.prevent="dropTargetFolderId = null"
+                                        @drop.prevent="handleDropOnFolder(folder.id)"
+                                        class="group bg-[#161b22] rounded-lg border p-3 cursor-pointer transition-all"
+                                        :class="dropTargetFolderId === folder.id ? 'border-[#58a6ff] bg-[#58a6ff]/10 scale-105' : 'border-[#30363d] hover:border-[#8b949e]/50'"
                                     >
                                         <div class="flex items-center gap-3">
-                                            <svg class="w-8 h-8 text-[#8b949e] group-hover:text-[#58a6ff] transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-8 h-8 transition-colors" :class="dropTargetFolderId === folder.id ? 'text-[#58a6ff]' : 'text-[#8b949e] group-hover:text-[#58a6ff]'" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
                                             </svg>
                                             <span class="text-[#c9d1d9] text-sm font-medium truncate" x-text="folder.name"></span>
@@ -263,12 +339,18 @@
                     <!-- Files Grid -->
                     <template x-if="assets.length > 0">
                         <div>
-                            <template x-if="folders.length > 0 && selectedTags.length === 0">
+                            <template x-if="folders.length > 0 && !searchQuery.trim() && selectedTags.length === 0">
                                 <div class="text-xs text-[#8b949e] uppercase tracking-wide mb-3">Files</div>
                             </template>
                             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 <template x-for="asset in assets" :key="asset.id">
-                                    <div class="group bg-[#161b22] rounded-lg border border-[#30363d] hover:border-[#8b949e]/50 transition-colors">
+                                    <div 
+                                        class="group bg-[#161b22] rounded-lg border border-[#30363d] hover:border-[#8b949e]/50 transition-colors"
+                                        :class="draggingAssetId === asset.id ? 'opacity-50' : ''"
+                                        draggable="true"
+                                        @dragstart="startDragAsset($event, asset.id)"
+                                        @dragend="endDragAsset()"
+                                    >
                                         <div
                                             @click="isImage(asset) && openLightbox(asset.id)"
                                             class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden relative rounded-t-lg"
@@ -333,6 +415,10 @@
                                                             class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
                                                         >Tags...</button>
                                                         <button 
+                                                            @click.stop="openDetailsModal(asset); open = false"
+                                                            class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                                        >Details</button>
+                                                        <button 
                                                             @click.stop="openMoveModal(asset.id); open = false"
                                                             class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
                                                         >Move to...</button>
@@ -363,7 +449,7 @@
 
             <!-- List View -->
             <template x-if="viewMode === 'list'">
-                <div class="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                <div class="bg-[#161b22] border border-[#30363d] rounded-lg">
                     <table class="w-full">
                         <thead class="bg-[#21262d] border-b border-[#30363d]">
                             <tr>
@@ -374,15 +460,44 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#30363d]">
-                            <!-- Folders (hidden when filtering by tags - global search) -->
-                            <template x-for="folder in (selectedTags.length === 0 ? folders : [])" :key="'folder-' + folder.id">
+                            <!-- Parent Folder (..) -->
+                            <template x-if="currentFolderId && !searchQuery.trim() && selectedTags.length === 0">
                                 <tr 
-                                    @click="navigateToFolder(folder.id)"
-                                    class="hover:bg-[#21262d] cursor-pointer transition-colors"
+                                    @click="navigateToFolder(parentFolderId)"
+                                    @dragover.prevent="dropTargetFolderId = 'parent'"
+                                    @dragenter.prevent="dropTargetFolderId = 'parent'"
+                                    @dragleave.prevent="dropTargetFolderId = null"
+                                    @drop.prevent="handleDropOnFolder(parentFolderId)"
+                                    class="cursor-pointer transition-all"
+                                    :class="dropTargetFolderId === 'parent' ? 'bg-[#58a6ff]/10' : 'hover:bg-[#21262d]'"
                                 >
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-3">
-                                            <svg class="w-5 h-5 text-[#8b949e]" fill="currentColor" viewBox="0 0 24 24">
+                                            <svg class="w-5 h-5 transition-colors" :class="dropTargetFolderId === 'parent' ? 'text-[#58a6ff]' : 'text-[#8b949e]'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                            </svg>
+                                            <span class="text-[#c9d1d9] text-sm font-medium">..</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-[#8b949e] hidden sm:table-cell">--</td>
+                                    <td class="px-4 py-3 text-sm text-[#8b949e] hidden md:table-cell">--</td>
+                                    <td class="px-4 py-3"></td>
+                                </tr>
+                            </template>
+                            <!-- Folders (hidden during search or tag filtering) -->
+                            <template x-for="folder in ((!searchQuery.trim() && selectedTags.length === 0) ? folders : [])" :key="'folder-' + folder.id">
+                                <tr 
+                                    @click="navigateToFolder(folder.id)"
+                                    @dragover.prevent="dropTargetFolderId = folder.id"
+                                    @dragenter.prevent="dropTargetFolderId = folder.id"
+                                    @dragleave.prevent="dropTargetFolderId = null"
+                                    @drop.prevent="handleDropOnFolder(folder.id)"
+                                    class="cursor-pointer transition-all"
+                                    :class="dropTargetFolderId === folder.id ? 'bg-[#58a6ff]/10' : 'hover:bg-[#21262d]'"
+                                >
+                                    <td class="px-4 py-3">
+                                        <div class="flex items-center gap-3">
+                                            <svg class="w-5 h-5 transition-colors" :class="dropTargetFolderId === folder.id ? 'text-[#58a6ff]' : 'text-[#8b949e]'" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
                                             </svg>
                                             <span class="text-[#c9d1d9] text-sm font-medium" x-text="folder.name"></span>
@@ -419,7 +534,13 @@
                             </template>
                             <!-- Files -->
                             <template x-for="asset in assets" :key="'asset-' + asset.id">
-                                <tr class="hover:bg-[#21262d] transition-colors">
+                                <tr 
+                                    class="hover:bg-[#21262d] transition-colors"
+                                    :class="draggingAssetId === asset.id ? 'opacity-50' : ''"
+                                    draggable="true"
+                                    @dragstart="startDragAsset($event, asset.id)"
+                                    @dragend="endDragAsset()"
+                                >
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-3">
                                             <template x-if="isImage(asset)">
@@ -479,34 +600,38 @@
                                                         class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
                                                     >Edit</button>
                                                 </template>
-                                                <button 
-                                                    @click.stop="openTagAssetModal(asset); open = false"
-                                                    class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
-                                                >Tags...</button>
-                                                <button 
-                                                    @click.stop="openMoveModal(asset.id); open = false"
-                                                    class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
-                                                >Move to...</button>
-                                                <button 
-                                                    @click.stop="shareAsset(asset.id); open = false"
-                                                    class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
-                                                >Share</button>
-                                                <button 
-                                                    @click.stop="downloadAsset(asset.id); open = false"
-                                                    class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
-                                                >Download</button>
-                                                <div class="border-t border-[#30363d] my-1"></div>
-                                                <button 
-                                                    @click.stop="deleteAsset(asset.id); open = false"
-                                                    class="w-full px-3 py-1.5 text-left text-sm text-[#f85149] hover:bg-[#30363d] transition-colors"
-                                                >Delete</button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                                                            <button 
+                                                                @click.stop="openTagAssetModal(asset); open = false"
+                                                                class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                                            >Tags...</button>
+                                                            <button 
+                                                                @click.stop="openDetailsModal(asset); open = false"
+                                                                class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                                            >Details</button>
+                                                            <button 
+                                                                @click.stop="openMoveModal(asset.id); open = false"
+                                                                class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                                            >Move to...</button>
+                                                            <button 
+                                                                @click.stop="shareAsset(asset.id); open = false"
+                                                                class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                                            >Share</button>
+                                                            <button 
+                                                                @click.stop="downloadAsset(asset.id); open = false"
+                                                                class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                                            >Download</button>
+                                                            <div class="border-t border-[#30363d] my-1"></div>
+                                                            <button 
+                                                                @click.stop="deleteAsset(asset.id); open = false"
+                                                                class="w-full px-3 py-1.5 text-left text-sm text-[#f85149] hover:bg-[#30363d] transition-colors"
+                                                            >Delete</button>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
                 </div>
             </template>
         </div>
@@ -763,6 +888,151 @@
             </div>
         </div>
     </template>
+
+    <!-- Asset Details Modal -->
+    <template x-if="showDetailsModal && assetDetails">
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="showDetailsModal = false">
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-[#c9d1d9]">Asset Details</h3>
+                    <button @click="showDetailsModal = false" class="text-[#8b949e] hover:text-[#c9d1d9]">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Thumbnail -->
+                <div class="mb-4">
+                    <template x-if="isImage(assetDetails)">
+                        <img 
+                            :src="'/api/assets/' + assetDetails.id + '?download=true'" 
+                            :alt="assetDetails.filename"
+                            class="w-full h-48 object-contain bg-[#0d1117] rounded-lg"
+                        >
+                    </template>
+                    <template x-if="!isImage(assetDetails)">
+                        <div class="w-full h-48 bg-[#0d1117] rounded-lg flex items-center justify-center">
+                            <span class="text-6xl">📄</span>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- File Info -->
+                <div class="space-y-3 mb-4">
+                    <div class="flex justify-between items-center py-2 border-b border-[#30363d]">
+                        <span class="text-[#8b949e] text-sm">Filename</span>
+                        <span class="text-[#c9d1d9] text-sm font-medium truncate ml-4 max-w-[60%]" x-text="assetDetails.filename"></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-[#30363d]">
+                        <span class="text-[#8b949e] text-sm">Size</span>
+                        <span class="text-[#c9d1d9] text-sm" x-text="formatFileSize(assetDetails.size)"></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-[#30363d]">
+                        <span class="text-[#8b949e] text-sm">Type</span>
+                        <span class="text-[#c9d1d9] text-sm" x-text="assetDetails.mimeType || assetDetails.mime_type"></span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-[#30363d]">
+                        <span class="text-[#8b949e] text-sm">Created</span>
+                        <span class="text-[#c9d1d9] text-sm" x-text="formatDate(assetDetails.created || assetDetails.created_at)"></span>
+                    </div>
+                    <template x-if="assetDetails.updated || assetDetails.updated_at">
+                        <div class="flex justify-between items-center py-2 border-b border-[#30363d]">
+                            <span class="text-[#8b949e] text-sm">Updated</span>
+                            <span class="text-[#c9d1d9] text-sm" x-text="formatDate(assetDetails.updated || assetDetails.updated_at)"></span>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Metadata Section -->
+                <template x-if="assetDetails.metadata && Object.keys(assetDetails.metadata).length > 0">
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-[#c9d1d9] mb-2">Metadata</h4>
+                        <div class="bg-[#0d1117] rounded-lg p-3 space-y-2">
+                            <template x-if="assetDetails.metadata.caption">
+                                <div>
+                                    <span class="text-[#8b949e] text-xs uppercase tracking-wide">AI Caption</span>
+                                    <p class="text-[#c9d1d9] text-sm mt-1" x-text="assetDetails.metadata.caption"></p>
+                                </div>
+                            </template>
+                            <template x-for="(value, key) in assetDetails.metadata" :key="key">
+                                <template x-if="key !== 'caption'">
+                                    <div>
+                                        <span class="text-[#8b949e] text-xs uppercase tracking-wide" x-text="key"></span>
+                                        <p class="text-[#c9d1d9] text-sm mt-1" x-text="typeof value === 'object' ? JSON.stringify(value) : value"></p>
+                                    </div>
+                                </template>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- No Metadata -->
+                <template x-if="!assetDetails.metadata || Object.keys(assetDetails.metadata).length === 0">
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-[#c9d1d9] mb-2">Metadata</h4>
+                        <div class="bg-[#0d1117] rounded-lg p-3">
+                            <p class="text-[#8b949e] text-sm text-center">No metadata available</p>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Tags -->
+                <template x-if="assetDetails.tags && assetDetails.tags.length > 0">
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-[#c9d1d9] mb-2">Tags</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="tag in assetDetails.tags" :key="tag.id">
+                                <span 
+                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                    :style="'background-color: ' + tag.color + '20; color: ' + tag.color"
+                                    x-text="tag.name"
+                                ></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="flex justify-end">
+                    <button
+                        @click="showDetailsModal = false"
+                        class="px-4 py-2 text-sm text-[#c9d1d9] hover:bg-[#21262d] rounded-md transition-colors"
+                    >Close</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Confirm Modal -->
+    <template x-if="confirmModal.show">
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="confirmModal.show = false">
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-sm p-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-full bg-[#f8514926] flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-[#f85149]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-medium text-[#c9d1d9] mb-1" x-text="confirmModal.title"></h3>
+                        <p class="text-sm text-[#8b949e]" x-text="confirmModal.message"></p>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button
+                        @click="confirmModal.show = false"
+                        class="px-4 py-2 text-sm text-[#c9d1d9] hover:bg-[#21262d] rounded-md transition-colors"
+                    >Cancel</button>
+                    <button
+                        @click="confirmModal.onConfirm && confirmModal.onConfirm(); confirmModal.show = false"
+                        class="px-4 py-2 text-white text-sm font-medium rounded-md transition-colors"
+                        :class="confirmModal.confirmClass"
+                        x-text="confirmModal.confirmText"
+                    ></button>
+                </div>
+            </div>
+        </div>
+    </template>
 </div>
 @endsection
 
@@ -795,9 +1065,46 @@
             showTagAssetModal: false,
             assetToTag: null,
             assetTagIds: [],
+            // Details modal
+            showDetailsModal: false,
+            assetDetails: null,
+            // Drag and drop
+            draggingAssetId: null,
+            dropTargetFolderId: null,
+            // Confirm modal
+            confirmModal: {
+                show: false,
+                title: '',
+                message: '',
+                confirmText: 'Delete',
+                confirmClass: 'bg-[#f85149] hover:bg-[#da3633]',
+                onConfirm: null
+            },
+            // Multi-select
+            selectedAssets: [],
+            showBulkMoveModal: false,
 
             get imageAssets() {
                 return this.assets.filter(a => this.isImage(a));
+            },
+
+            get parentFolderId() {
+                // Returns the parent folder ID when inside a subfolder
+                // null means root, undefined means we're already at root
+                if (!this.currentFolderId) return undefined;
+                if (this.breadcrumbs.length <= 1) return null;
+                return this.breadcrumbs[this.breadcrumbs.length - 2].id;
+            },
+
+            showConfirm({ title, message, confirmText = 'Delete', confirmClass = 'bg-[#f85149] hover:bg-[#da3633]', onConfirm }) {
+                this.confirmModal = {
+                    show: true,
+                    title,
+                    message,
+                    confirmText,
+                    confirmClass,
+                    onConfirm
+                };
             },
 
             async init() {
@@ -892,9 +1199,9 @@
             async loadAssets() {
                 try {
                     const params = new URLSearchParams();
-                    // Tags search globally (ignore folder context)
-                    // Search also goes global when tags are active
-                    if (this.selectedTags.length === 0) {
+                    // Search and tag filtering are global (ignore folder context)
+                    const isGlobalSearch = this.searchQuery.trim() || this.selectedTags.length > 0;
+                    if (!isGlobalSearch) {
                         if (this.currentFolderId) {
                             params.set('folder_id', this.currentFolderId);
                         } else {
@@ -988,16 +1295,22 @@
                 }
             },
 
-            async deleteFolder(id) {
-                if (!confirm('Delete this folder? All contents will be moved to parent folder.')) return;
-                try {
-                    await window.apiFetch(`/api/folders/${id}`, { method: 'DELETE' });
-                    await this.loadContent();
-                    this.$dispatch('toast', { message: 'Folder deleted', type: 'success' });
-                } catch (e) {
-                    console.error('Delete folder failed:', e);
-                    this.$dispatch('toast', { message: 'Failed to delete folder', type: 'error' });
-                }
+            deleteFolder(id) {
+                this.showConfirm({
+                    title: 'Delete folder?',
+                    message: 'All contents will be moved to the parent folder.',
+                    confirmText: 'Delete',
+                    onConfirm: async () => {
+                        try {
+                            await window.apiFetch(`/api/folders/${id}`, { method: 'DELETE' });
+                            await this.loadContent();
+                            this.$dispatch('toast', { message: 'Folder deleted', type: 'success' });
+                        } catch (e) {
+                            console.error('Delete folder failed:', e);
+                            this.$dispatch('toast', { message: 'Failed to delete folder', type: 'error' });
+                        }
+                    }
+                });
             },
 
             openMoveModal(assetId) {
@@ -1082,16 +1395,23 @@
                 }
             },
 
-            async deleteAsset(id) {
-                if (!confirm('Delete this file?')) return;
-                try {
-                    await window.apiFetch(`/api/assets/${id}`, { method: 'DELETE' });
-                    await this.loadAssets();
-                    this.$dispatch('toast', { message: 'File deleted', type: 'success' });
-                } catch (e) {
-                    console.error('Delete failed:', e);
-                    this.$dispatch('toast', { message: 'Delete failed', type: 'error' });
-                }
+            deleteAsset(id) {
+                const asset = this.assets.find(a => a.id === id);
+                this.showConfirm({
+                    title: 'Delete file?',
+                    message: asset ? `"${asset.filename}" will be permanently deleted.` : 'This file will be permanently deleted.',
+                    confirmText: 'Delete',
+                    onConfirm: async () => {
+                        try {
+                            await window.apiFetch(`/api/assets/${id}`, { method: 'DELETE' });
+                            await this.loadAssets();
+                            this.$dispatch('toast', { message: 'File deleted', type: 'success' });
+                        } catch (e) {
+                            console.error('Delete failed:', e);
+                            this.$dispatch('toast', { message: 'Delete failed', type: 'error' });
+                        }
+                    }
+                });
             },
 
             async shareAsset(id) {
@@ -1211,27 +1531,38 @@
                 }
             },
 
-            async deleteTag(id) {
-                if (!confirm('Delete this tag? It will be removed from all files.')) return;
-                try {
-                    const res = await window.apiFetch(`/api/tags/${id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        await this.loadTags();
-                        // Remove from selected filters if present
-                        this.selectedTags = this.selectedTags.filter(t => t !== id);
-                        await this.loadAssets();
-                        this.$dispatch('toast', { message: 'Tag deleted', type: 'success' });
+            deleteTag(id) {
+                const tag = this.tags.find(t => t.id === id);
+                this.showConfirm({
+                    title: 'Delete tag?',
+                    message: tag ? `"${tag.name}" will be removed from all files.` : 'This tag will be removed from all files.',
+                    confirmText: 'Delete',
+                    onConfirm: async () => {
+                        try {
+                            const res = await window.apiFetch(`/api/tags/${id}`, { method: 'DELETE' });
+                            if (res.ok) {
+                                await this.loadTags();
+                                this.selectedTags = this.selectedTags.filter(t => t !== id);
+                                await this.loadAssets();
+                                this.$dispatch('toast', { message: 'Tag deleted', type: 'success' });
+                            }
+                        } catch (e) {
+                            console.error('Delete tag failed:', e);
+                            this.$dispatch('toast', { message: 'Failed to delete tag', type: 'error' });
+                        }
                     }
-                } catch (e) {
-                    console.error('Delete tag failed:', e);
-                    this.$dispatch('toast', { message: 'Failed to delete tag', type: 'error' });
-                }
+                });
             },
 
             openTagAssetModal(asset) {
                 this.assetToTag = asset;
                 this.assetTagIds = (asset.tags || []).map(t => t.id);
                 this.showTagAssetModal = true;
+            },
+
+            openDetailsModal(asset) {
+                this.assetDetails = asset;
+                this.showDetailsModal = true;
             },
 
             toggleAssetTag(tagId) {
@@ -1264,6 +1595,135 @@
                     console.error('Save tags failed:', e);
                     this.$dispatch('toast', { message: e.message || 'Failed to update tags', type: 'error' });
                 }
+            },
+
+            // Drag and drop for moving files to folders
+            startDragAsset(event, assetId) {
+                this.draggingAssetId = assetId;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', assetId);
+            },
+
+            endDragAsset() {
+                this.draggingAssetId = null;
+                this.dropTargetFolderId = null;
+            },
+
+            async handleDropOnFolder(folderId) {
+                const assetId = this.draggingAssetId;
+                this.endDragAsset();
+                
+                if (!assetId) return;
+                
+                try {
+                    const res = await window.apiFetch('/api/assets/move', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            asset_ids: [assetId],
+                            folder_id: folderId
+                        })
+                    });
+
+                    if (res.ok) {
+                        await this.loadContent();
+                        this.$dispatch('toast', { message: 'File moved', type: 'success' });
+                    } else {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Failed to move file');
+                    }
+                } catch (e) {
+                    console.error('Move failed:', e);
+                    this.$dispatch('toast', { message: e.message || 'Failed to move file', type: 'error' });
+                }
+            },
+
+            // Multi-select methods
+            isSelected(assetId) {
+                return this.selectedAssets.includes(assetId);
+            },
+
+            toggleSelect(assetId, event) {
+                if (event) event.stopPropagation();
+                const idx = this.selectedAssets.indexOf(assetId);
+                if (idx === -1) {
+                    this.selectedAssets.push(assetId);
+                } else {
+                    this.selectedAssets.splice(idx, 1);
+                }
+            },
+
+            selectAll() {
+                this.selectedAssets = this.assets.map(a => a.id);
+            },
+
+            deselectAll() {
+                this.selectedAssets = [];
+            },
+
+            get allSelected() {
+                return this.assets.length > 0 && this.selectedAssets.length === this.assets.length;
+            },
+
+            get someSelected() {
+                return this.selectedAssets.length > 0 && this.selectedAssets.length < this.assets.length;
+            },
+
+            openBulkMoveModal() {
+                this.moveTargetFolder = null;
+                this.showBulkMoveModal = true;
+            },
+
+            async bulkMoveToFolder(folderId) {
+                if (this.selectedAssets.length === 0) return;
+
+                try {
+                    const res = await window.apiFetch('/api/assets/move', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            asset_ids: this.selectedAssets,
+                            folder_id: folderId
+                        })
+                    });
+
+                    if (res.ok) {
+                        const count = this.selectedAssets.length;
+                        this.showBulkMoveModal = false;
+                        this.selectedAssets = [];
+                        await this.loadContent();
+                        this.$dispatch('toast', { message: `${count} file${count > 1 ? 's' : ''} moved`, type: 'success' });
+                    } else {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Failed to move files');
+                    }
+                } catch (e) {
+                    console.error('Bulk move failed:', e);
+                    this.$dispatch('toast', { message: e.message || 'Failed to move files', type: 'error' });
+                }
+            },
+
+            bulkDelete() {
+                const count = this.selectedAssets.length;
+                this.showConfirm({
+                    title: `Delete ${count} file${count > 1 ? 's' : ''}?`,
+                    message: 'These files will be permanently deleted.',
+                    confirmText: 'Delete',
+                    onConfirm: async () => {
+                        try {
+                            // Delete all selected assets
+                            await Promise.all(
+                                this.selectedAssets.map(id => 
+                                    window.apiFetch(`/api/assets/${id}`, { method: 'DELETE' })
+                                )
+                            );
+                            this.selectedAssets = [];
+                            await this.loadAssets();
+                            this.$dispatch('toast', { message: `${count} file${count > 1 ? 's' : ''} deleted`, type: 'success' });
+                        } catch (e) {
+                            console.error('Bulk delete failed:', e);
+                            this.$dispatch('toast', { message: 'Failed to delete files', type: 'error' });
+                        }
+                    }
+                });
             }
         }
     }

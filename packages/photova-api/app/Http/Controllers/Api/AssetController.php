@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\AnalyzeAsset;
 use App\Models\Asset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,14 +25,20 @@ class AssetController extends Controller
             ->with('tags')
             ->where('bucket', $bucket);
 
-        if ($folderId === 'root' || $folderId === '') {
-            $query->whereNull('folder_id');
-        } elseif ($folderId) {
-            $query->where('folder_id', $folderId);
+        // When searching, ignore folder context (flatten results)
+        if (!$search) {
+            if ($folderId === 'root' || $folderId === '') {
+                $query->whereNull('folder_id');
+            } elseif ($folderId) {
+                $query->where('folder_id', $folderId);
+            }
         }
 
         if ($search) {
-            $query->where('filename', 'ilike', '%' . $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->where('filename', 'ilike', '%' . $search . '%')
+                  ->orWhereRaw("metadata::text ilike ?", ['%' . $search . '%']);
+            });
         }
 
         if ($tagIds) {
@@ -129,6 +136,10 @@ class AssetController extends Controller
             'metadata' => $request->input('metadata', []),
         ]);
 
+        if (str_starts_with($mimeType, 'image/')) {
+            AnalyzeAsset::dispatch($asset);
+        }
+
         return response()->json(['asset' => $this->formatAsset($asset)], 201);
     }
 
@@ -139,6 +150,52 @@ class AssetController extends Controller
         if ($request->boolean('download')) {
             return $this->download($asset);
         }
+
+        return response()->json(['asset' => $this->formatAsset($asset)]);
+    }
+
+    public function update(Request $request, Asset $asset): JsonResponse
+    {
+        $this->authorizeAsset($request, $asset);
+
+        $bucketConfig = config("photova.storage.buckets.{$asset->bucket}");
+        $disk = $bucketConfig['disk'] ?? 'local';
+
+        if ($request->has('image')) {
+            $imageData = $request->input('image');
+
+            if (preg_match('/^data:([^;]+);base64,(.+)$/', $imageData, $matches)) {
+                $mimeType = $matches[1];
+                $content = base64_decode($matches[2]);
+            } else {
+                $content = base64_decode($imageData);
+                $mimeType = $asset->mime_type;
+            }
+
+            $storagePath = ($bucketConfig['path'] ?? 'assets') . '/' . $asset->storage_key;
+            Storage::disk($disk)->put($storagePath, $content);
+
+            $asset->update([
+                'mime_type' => $mimeType,
+                'size' => strlen($content),
+            ]);
+
+            if (str_starts_with($mimeType, 'image/')) {
+                AnalyzeAsset::dispatch($asset);
+            }
+        }
+
+        if ($request->has('filename')) {
+            $asset->update(['filename' => $request->input('filename')]);
+        }
+
+        if ($request->has('metadata')) {
+            $existingMetadata = $asset->metadata ?? [];
+            $newMetadata = array_merge($existingMetadata, $request->input('metadata'));
+            $asset->update(['metadata' => $newMetadata]);
+        }
+
+        $asset->refresh();
 
         return response()->json(['asset' => $this->formatAsset($asset)]);
     }

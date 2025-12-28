@@ -25,6 +25,10 @@ export interface SaveResult {
   url: string;
 }
 
+export interface SaveMetadata {
+  caption?: string;
+}
+
 export interface EditorUIConfig {
   container: HTMLElement | string;
   image?: string;
@@ -38,13 +42,13 @@ export interface EditorUIConfig {
   styles?: EditorUIStyles;
   unstyled?: boolean;
   onExport?: (blob: Blob) => void;
-  onSave?: (blob: Blob) => Promise<SaveResult | void>;
+  onSave?: (blob: Blob, metadata: SaveMetadata) => Promise<SaveResult | void>;
   onClose?: () => void;
 }
 
 type PanelType = 'filters' | 'adjust' | 'layers' | 'text' | 'shapes' | 'crop' | 'transform' | 'brush' | 'ai' | null;
 
-const DEFAULT_TOOLS: ToolType[] = ['select', 'ai', 'crop', 'transform', 'filter', 'adjust', 'brush', 'text', 'shape', 'layers'];
+const DEFAULT_TOOLS: ToolType[] = ['ai', 'select', 'crop', 'transform', 'filter', 'adjust', 'brush', 'text', 'shape', 'layers'];
 
 export class EditorUI {
   private config: EditorUIConfig;
@@ -52,8 +56,8 @@ export class EditorUI {
   private editor: Editor;
   private filterEngine: FilterEngine;
   private root: HTMLElement;
-  private currentPanel: PanelType = null;
-  private currentTool: ToolType = 'select';
+  private currentPanel: PanelType = 'ai';
+  private currentTool: ToolType = 'ai';
   private adjustments: Record<string, number> = {};
   private originalImageData: ImageData | null = null;
   private currentPreset: string | null = null;
@@ -92,6 +96,7 @@ export class EditorUI {
   private brushMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private brushMouseUpHandler: (() => void) | null = null;
   private isSaving = false;
+  private lastAnalysisCaption: string | null = null;
 
   constructor(config: EditorUIConfig) {
     this.config = {
@@ -119,6 +124,7 @@ export class EditorUI {
     this.initializeBrushTool(canvasContainer);
     this.setupEventListeners();
     this.resetAdjustments();
+    this.showPanel('ai');
 
     if (config.image) {
       this.loadImage(config.image);
@@ -216,8 +222,8 @@ export class EditorUI {
 
   private renderSidebar(): string {
     const allTools = [
-      { type: 'select', icon: 'select', label: 'Select' },
       { type: 'ai', icon: 'sparkles', label: 'AI', panel: 'ai' },
+      { type: 'select', icon: 'select', label: 'Select' },
       { type: 'crop', icon: 'crop', label: 'Crop', panel: 'crop' },
       { type: 'transform', icon: 'transform', label: 'Transform', panel: 'transform' },
       { type: 'filter', icon: 'filter', label: 'Filters', panel: 'filters' },
@@ -543,6 +549,9 @@ export class EditorUI {
       <div class="brighten-panel-content">
         ${hasApiEndpoint ? `
           <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="brighten-btn" data-action="analyze" style="width: 100%; justify-content: flex-start;">
+              <span style="${iconStyle}">${icons.scan}</span> Analyze Image
+            </button>
             <button class="brighten-btn" data-action="remove-background" style="width: 100%; justify-content: flex-start;">
               <span style="${iconStyle}">${icons.magic}</span> Remove Background
             </button>
@@ -1077,6 +1086,9 @@ export class EditorUI {
 
         case 'apply-inpaint':
           this.applyInpaint();
+          break;
+        case 'analyze':
+          this.analyze();
           break;
       }
     }
@@ -2036,6 +2048,114 @@ export class EditorUI {
     }
   }
 
+  private async analyze(): Promise<void> {
+    if (!this.config.apiEndpoint) {
+      console.error('API endpoint not configured');
+      return;
+    }
+
+    const layers = this.editor.getLayerManager().getLayers();
+    const imageLayer = layers.find(l => l.type === 'image');
+    if (!imageLayer || imageLayer.type !== 'image') return;
+
+    const source = imageLayer.source;
+    const canvas = document.createElement('canvas');
+    canvas.width = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    canvas.height = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(source, 0, 0);
+    const base64Image = canvas.toDataURL('image/png');
+
+    const btn = this.root.querySelector('[data-action="analyze"]') as HTMLButtonElement;
+    const resetButton = () => {
+      this.setAiProcessing(false);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span style="display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">${icons.scan}</span> Analyze Image`;
+      }
+    };
+
+    this.setAiProcessing(true);
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span style="display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 6px;">${icons.scan}</span> Analyzing...`;
+    }
+
+    try {
+      const response = await fetch(`${this.config.apiEndpoint}/api/v1/analyze`, {
+        method: 'POST',
+        headers: this.getApiHeaders(),
+        body: JSON.stringify({ image: base64Image }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to analyze image');
+      }
+
+      const result = await response.json();
+      resetButton();
+      const caption = result.caption.replace(/^Caption:\s*/i, '');
+      this.lastAnalysisCaption = caption;
+      this.showAnalysisResult(caption);
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      resetButton();
+      alert(error instanceof Error ? error.message : 'Analysis failed');
+    }
+  }
+
+  private showAnalysisResult(caption: string): void {
+    const existing = this.root.querySelector('.brighten-analysis-result');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'brighten-analysis-result';
+    toast.style.cssText = `
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--brighten-surface);
+      border: 1px solid var(--brighten-border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      max-width: 400px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      animation: brighten-fade-in 0.2s ease-out;
+    `;
+
+    toast.innerHTML = `
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <div style="flex-shrink: 0; width: 24px; height: 24px; color: var(--brighten-primary);">
+          ${icons.sparkles}
+        </div>
+        <div style="flex: 1;">
+          <div style="font-size: 12px; color: var(--brighten-text-secondary); margin-bottom: 4px;">AI Analysis</div>
+          <div style="font-size: 14px; color: var(--brighten-text); line-height: 1.4;">${caption}</div>
+        </div>
+        <button class="brighten-btn brighten-btn-icon" style="padding: 4px; flex-shrink: 0;" data-action="close-analysis">
+          ${icons.close}
+        </button>
+      </div>
+    `;
+
+    toast.querySelector('[data-action="close-analysis"]')?.addEventListener('click', () => {
+      toast.remove();
+    });
+
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.2s ease-out';
+        setTimeout(() => toast.remove(), 200);
+      }
+    }, 10000);
+
+    this.root.appendChild(toast);
+  }
+
   private startInpaintMode(): void {
     const layers = this.editor.getLayerManager().getLayers();
     const imageLayer = layers.find(l => l.type === 'image');
@@ -2466,7 +2586,11 @@ export class EditorUI {
       }
 
       const blob = await this.editor.export({ format: 'png', quality: 0.92 });
-      const result = await this.config.onSave(blob);
+      const metadata: SaveMetadata = {};
+      if (this.lastAnalysisCaption) {
+        metadata.caption = this.lastAnalysisCaption;
+      }
+      const result = await this.config.onSave(blob, metadata);
 
       if (btn) {
         btn.innerHTML = `${icons.check} Saved`;

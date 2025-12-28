@@ -20,7 +20,10 @@ class OperationController extends Controller
         'colorize',
         'inpaint',
         'restore',
+        'analyze',
     ];
+
+    private const ANALYSIS_OPERATIONS = ['analyze'];
 
     public function execute(Request $request, string $operation): JsonResponse
     {
@@ -44,14 +47,24 @@ class OperationController extends Controller
 
             $this->logUsage($request, $operation, 'success', $latencyMs, $requestId);
 
+            $metadata = [
+                'provider' => $result['provider'],
+                'model' => $result['model'] ?? null,
+                'processingTime' => $latencyMs,
+                'requestId' => $requestId,
+            ];
+
+            // Analysis operations return caption, not image
+            if (in_array($operation, self::ANALYSIS_OPERATIONS)) {
+                return response()->json([
+                    'caption' => $result['caption'],
+                    'metadata' => $metadata,
+                ]);
+            }
+
             return response()->json([
                 'image' => $result['image'],
-                'metadata' => [
-                    'provider' => $result['provider'],
-                    'model' => $result['model'] ?? null,
-                    'processingTime' => $latencyMs,
-                    'requestId' => $requestId,
-                ],
+                'metadata' => $metadata,
             ]);
         } catch (\Exception $e) {
             $latencyMs = (int) ((microtime(true) - $startTime) * 1000);

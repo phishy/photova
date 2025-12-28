@@ -25,6 +25,9 @@ return [
         'restore' => [
             'provider' => env('RESTORE_PROVIDER', 'replicate'),
         ],
+        'analyze' => [
+            'provider' => env('ANALYZE_PROVIDER', 'replicate'),
+        ],
     ],
 
     'providers' => [
@@ -37,6 +40,7 @@ return [
                 'colorize' => 'arielreplicate/deoldify_image:0da600fab0c45a66211339f1c16b71345d22f26ef5f067b17f4769b9bce92ae1',
                 'inpaint' => 'stability-ai/stable-diffusion-inpainting:c28b92a7ecd66eee4aefcd8a94eb9e7f6c3805d5f06038165407fb5cb355ba67',
                 'restore' => 'tencentarc/gfpgan:0fbacf7afc6c144e5be9767cff80f25aff23e52b0708f17e20f9879b2f21516c',
+                'analyze' => 'salesforce/blip:2e1dddc8621f72155f24cf2e0adbde548458d3cab9f00c0139eea840d0ac4746',
             ],
         ],
         'fal' => [

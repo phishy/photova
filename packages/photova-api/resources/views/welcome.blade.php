@@ -48,7 +48,7 @@
     <header class="fixed top-0 left-0 right-0 z-50 px-6 h-16 flex items-center bg-black/50 backdrop-blur-xl border-b border-white/5">
         <div class="max-w-6xl mx-auto w-full flex justify-between items-center">
             <a href="/" class="flex items-center gap-2 font-semibold text-sm">
-                <span class="text-xl">☀️</span>
+                <svg class="w-6 h-6 text-[#58a6ff]" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <span>Photova</span>
             </a>
             <nav class="flex items-center gap-8">
@@ -255,7 +255,7 @@
     <footer class="py-12 px-6 border-t border-white/5 bg-black">
         <div class="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-6">
             <div class="flex items-center gap-2 text-sm text-gray-500">
-                <span class="text-base">☀️</span>
+                <svg class="w-4 h-4 text-[#58a6ff]" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <span>Photova</span>
                 <span class="mx-2">·</span>
                 <span>© 2025</span>

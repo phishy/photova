@@ -39,7 +39,7 @@
         <div class="h-full px-6 flex items-center justify-between">
             <div class="flex items-center gap-6">
                 <a href="/" class="flex items-center gap-2 font-semibold text-white text-sm">
-                    <span class="text-lg">☀️</span>
+                    <svg class="w-5 h-5 text-[#58a6ff]" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                     <span>Photova</span>
                 </a>
                 <span class="text-gray-600">/</span>
