@@ -1,6 +1,6 @@
 @extends('dashboard.layout')
 
-@section('title', 'Assets')
+@section('title', 'Files')
 
 @section('content')
 <div 
@@ -41,7 +41,7 @@
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold tracking-tight text-[#c9d1d9]">Assets</h1>
+        <h1 class="text-2xl font-semibold tracking-tight text-[#c9d1d9]">Files</h1>
         <button
             @click="$refs.fileInput.click()"
             :disabled="uploading"
@@ -95,10 +95,10 @@
     <template x-if="!loading && assets.length > 0">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <template x-for="asset in assets" :key="asset.id">
-                <div class="group bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden hover:border-[#8b949e]/50 transition-colors">
+                <div class="group bg-[#161b22] rounded-lg border border-[#30363d] hover:border-[#8b949e]/50 transition-colors">
                     <div
                         @click="isImage(asset) && openLightbox(asset.id)"
-                        class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden relative"
+                        class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden relative rounded-t-lg"
                         :class="isImage(asset) ? 'cursor-pointer' : ''"
                     >
                         <template x-if="isImage(asset)">
@@ -113,29 +113,64 @@
                         </div>
                     </div>
                     <div class="p-3">
-                        <div class="text-[13px] font-medium text-[#c9d1d9] mb-1 truncate" x-text="asset.filename"></div>
-                        <div class="text-xs text-[#8b949e] mb-2" x-text="formatFileSize(asset.size) + ' • ' + formatDate(asset.created || asset.createdAt || asset.created_at)"></div>
-                        <div class="flex gap-2">
-                            <template x-if="isImage(asset)">
-                                <button
-                                    @click.stop="editAsset(asset.id)"
-                                    class="flex-1 py-1.5 bg-[#58a6ff]/10 border border-[#58a6ff]/40 rounded-md text-[#58a6ff] text-xs hover:bg-[#58a6ff]/20 transition-colors"
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="text-[13px] font-medium text-[#c9d1d9] mb-0.5 truncate" x-text="asset.filename"></div>
+                                <div class="text-xs text-[#8b949e]" x-text="formatFileSize(asset.size)"></div>
+                            </div>
+                            <!-- Kebab menu -->
+                            <div class="relative" x-data="{ open: false }">
+                                <button 
+                                    @click.stop="open = !open"
+                                    class="p-1 rounded hover:bg-[#30363d] text-[#8b949e] hover:text-[#c9d1d9] transition-colors"
                                 >
-                                    Edit
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 16 16">
+                                        <circle cx="8" cy="2.5" r="1.5"/>
+                                        <circle cx="8" cy="8" r="1.5"/>
+                                        <circle cx="8" cy="13.5" r="1.5"/>
+                                    </svg>
                                 </button>
-                            </template>
-                            <button
-                                @click.stop="shareAsset(asset.id)"
-                                class="flex-1 py-1.5 bg-transparent border border-[#30363d] rounded-md text-[#8b949e] text-xs hover:border-[#8b949e] hover:text-[#c9d1d9] transition-colors"
-                            >
-                                Share
-                            </button>
-                            <button
-                                @click.stop="deleteAsset(asset.id)"
-                                class="px-2.5 py-1.5 bg-transparent border border-[#f8514966] rounded-md text-[#f85149] text-xs hover:bg-[#f8514919] transition-colors"
-                            >
-                                ✕
-                            </button>
+                                <!-- Dropdown -->
+                                <div 
+                                    x-show="open" 
+                                    @click.outside="open = false"
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    class="absolute right-0 mt-1 w-32 bg-[#161b22] border border-[#30363d] rounded-md shadow-lg z-10 py-1"
+                                >
+                                    <template x-if="isImage(asset)">
+                                        <button 
+                                            @click.stop="editAsset(asset.id); open = false"
+                                            class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                        >
+                                            Edit
+                                        </button>
+                                    </template>
+                                    <button 
+                                        @click.stop="shareAsset(asset.id); open = false"
+                                        class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                    >
+                                        Share
+                                    </button>
+                                    <button 
+                                        @click.stop="downloadAsset(asset.id); open = false"
+                                        class="w-full px-3 py-1.5 text-left text-sm text-[#c9d1d9] hover:bg-[#30363d] transition-colors"
+                                    >
+                                        Download
+                                    </button>
+                                    <div class="border-t border-[#30363d] my-1"></div>
+                                    <button 
+                                        @click.stop="deleteAsset(asset.id); open = false"
+                                        class="w-full px-3 py-1.5 text-left text-sm text-[#f85149] hover:bg-[#30363d] transition-colors"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -311,6 +346,16 @@
                     console.error('Share failed:', e);
                     this.$dispatch('toast', { message: e.message || 'Failed to generate share link', type: 'error' });
                 }
+            },
+
+            downloadAsset(id) {
+                const asset = this.assets.find(a => a.id === id);
+                const link = document.createElement('a');
+                link.href = `/api/assets/${id}?download=true`;
+                link.download = asset?.filename || 'download';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             },
 
             editAsset(id) {

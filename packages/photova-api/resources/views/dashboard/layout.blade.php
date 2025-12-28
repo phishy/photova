@@ -39,35 +39,43 @@
             </a>
             
             <nav class="flex-1">
-                <a href="/dashboard" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard') && !request()->is('dashboard/*') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
-                    <span class="text-sm">◉</span>
-                    Overview
+                <a href="/dashboard/assets" class="flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/assets') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    Files
                 </a>
-                <a href="/dashboard/keys" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/keys') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
-                    <span class="text-sm">⚿</span>
+                <a href="/dashboard/keys" class="flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/keys') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                    </svg>
                     API Keys
                 </a>
-                <a href="/dashboard/assets" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/assets') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
-                    <span class="text-sm">⬡</span>
-                    Assets
-                </a>
-                <a href="/dashboard/usage" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/usage') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
-                    <span class="text-sm">◔</span>
+                <a href="/dashboard/usage" class="flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/usage') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
                     Usage
                 </a>
-                <a href="/dashboard/playground" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/playground') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
-                    <span class="text-sm">▷</span>
+                <a href="/dashboard/playground" class="flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/playground') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
                     Playground
                 </a>
             </nav>
 
             <div class="border-t border-white/[0.08] pt-4">
-                <a href="/docs" class="flex items-center gap-2.5 px-3 py-2.5 rounded-md mb-0.5 text-sm text-[#8b949e] hover:text-[#c9d1d9] transition-colors">
-                    <span class="text-sm">◧</span>
+                <a href="/docs" class="flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5 text-sm text-[#8b949e] hover:text-[#c9d1d9] transition-colors">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
                     Documentation
                 </a>
-                <button @click="logout" class="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] transition-colors text-left">
-                    <span class="text-sm">⎋</span>
+                <button @click="logout" class="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm text-[#8b949e] hover:text-[#c9d1d9] transition-colors text-left">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
                     Sign Out
                 </button>
             </div>
