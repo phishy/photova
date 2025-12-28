@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>API Documentation - Photova</title>
     <meta name="description" content="Complete API documentation for Photova - AI image editing APIs for developers.">
-    
+
     <!-- OpenGraph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url('/docs') }}">
@@ -15,7 +15,7 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="Photova">
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="API Documentation - Photova">
@@ -93,7 +93,7 @@
         <!-- Main Content -->
         <main class="flex-1 lg:ml-64 min-h-screen">
             <div class="max-w-4xl mx-auto px-6 py-16">
-                
+
                 <!-- Introduction -->
                 <section id="introduction" class="mb-20">
                     <h1 class="text-4xl font-bold text-white mb-4">API Documentation</h1>
@@ -135,7 +135,7 @@
                         </div>
                         <pre class="p-4 text-sm overflow-x-auto"><code><span class="text-gray-500"># Clone the repository</span>
 <span class="text-purple-400">git</span> clone https://github.com/phishy/photova.git
-<span class="text-purple-400">cd</span> brighten
+<span class="text-purple-400">cd</span> photova
 
 <span class="text-gray-500"># Start PostgreSQL via Docker</span>
 <span class="text-purple-400">docker</span> compose up postgres -d
@@ -215,7 +215,7 @@
 
                     <h3 id="storage" class="text-lg font-semibold text-white mb-3">Storage Configuration</h3>
                     <p class="text-gray-400 mb-4">Configure asset storage buckets in <code>config/photova.php</code>. Each bucket can use a different storage backend.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Available Disks</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -312,7 +312,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                 <section id="authentication" class="mb-20">
                     <h2 class="text-2xl font-bold text-white mb-4">Authentication</h2>
                     <p class="text-gray-400 mb-6">
-                        All API requests require authentication using an API key. You can create and manage your API keys from the 
+                        All API requests require authentication using an API key. You can create and manage your API keys from the
                         <a href="/dashboard/keys" class="text-blue-400 hover:text-blue-300">Dashboard</a>.
                     </p>
                     <p class="text-gray-400 mb-6">
@@ -403,7 +403,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-3">Background Removal</h3>
                     <p class="text-gray-400 mb-6">Remove the background from an image, returning a transparent PNG.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Request Body</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -459,7 +459,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-3">Upscale</h3>
                     <p class="text-gray-400 mb-6">Increase image resolution up to 4x using AI super-resolution.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Request Body</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -502,7 +502,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-3">Restore</h3>
                     <p class="text-gray-400 mb-6">Restore old or damaged photos by fixing scratches, tears, and imperfections.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Request Body</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -540,7 +540,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-3">Colorize</h3>
                     <p class="text-gray-400 mb-6">Add realistic color to black and white images using AI.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Request Body</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -578,7 +578,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-3">Deblur</h3>
                     <p class="text-gray-400 mb-6">Sharpen blurry images and restore clarity using AI deblurring.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Request Body</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -616,7 +616,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                     </div>
                     <h3 class="text-xl font-bold text-white mb-3">Object Removal (Inpaint)</h3>
                     <p class="text-gray-400 mb-6">Remove unwanted objects from images by providing a mask.</p>
-                    
+
                     <h4 class="text-sm font-semibold text-gray-300 mb-3">Request Body</h4>
                     <div class="overflow-hidden rounded-lg border border-white/10 mb-6">
                         <table class="w-full text-sm">
@@ -666,7 +666,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                 <section id="assets" class="mb-20">
                     <h3 class="text-xl font-bold text-white mb-6">Assets</h3>
                     <p class="text-gray-400 mb-8">Upload and manage images in your account storage.</p>
-                    
+
                     <!-- Upload Asset -->
                     <div class="mb-12">
                         <div class="flex items-center gap-3 mb-4">
@@ -717,7 +717,7 @@ AWS_USE_PATH_STYLE_ENDPOINT=true</code></pre>
                 <section id="usage" class="mb-20">
                     <h3 class="text-xl font-bold text-white mb-6">Usage</h3>
                     <p class="text-gray-400 mb-8">Track your API usage and billing.</p>
-                    
+
                     <!-- Usage Summary -->
                     <div class="mb-12">
                         <div class="flex items-center gap-3 mb-4">

@@ -16,10 +16,32 @@ class AssetController extends Controller
     public function index(Request $request): JsonResponse
     {
         $bucket = $request->query('bucket', config('photova.storage.default'));
+        $folderId = $request->query('folder_id');
+        $search = $request->query('search');
+        $tagIds = $request->query('tags');
 
-        $assets = $request->user()->assets()
-            ->where('bucket', $bucket)
-            ->orderByDesc('created_at')
+        $query = $request->user()->assets()
+            ->with('tags')
+            ->where('bucket', $bucket);
+
+        if ($folderId === 'root' || $folderId === '') {
+            $query->whereNull('folder_id');
+        } elseif ($folderId) {
+            $query->where('folder_id', $folderId);
+        }
+
+        if ($search) {
+            $query->where('filename', 'ilike', '%' . $search . '%');
+        }
+
+        if ($tagIds) {
+            $tagIdArray = is_array($tagIds) ? $tagIds : explode(',', $tagIds);
+            $query->whereHas('tags', function ($q) use ($tagIdArray) {
+                $q->whereIn('tags.id', $tagIdArray);
+            });
+        }
+
+        $assets = $query->orderByDesc('created_at')
             ->get()
             ->map(fn ($asset) => $this->formatAsset($asset));
 
@@ -33,6 +55,20 @@ class AssetController extends Controller
 
         if (!$bucketConfig) {
             return response()->json(['error' => 'Invalid bucket'], 400);
+        }
+
+        // Check for PHP upload errors (file too large, etc.)
+        if ($request->hasFile('file') && !$request->file('file')->isValid()) {
+            $error = $request->file('file')->getError();
+            $message = match ($error) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'File too large. Maximum upload size is ' . ini_get('upload_max_filesize'),
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+                UPLOAD_ERR_NO_TMP_DIR => 'Server configuration error: missing temp directory',
+                UPLOAD_ERR_CANT_WRITE => 'Server error: failed to write file',
+                UPLOAD_ERR_EXTENSION => 'Upload blocked by server extension',
+                default => 'Upload failed with error code ' . $error,
+            };
+            return response()->json(['error' => $message], 413);
         }
 
         if ($request->hasFile('file')) {
@@ -56,6 +92,16 @@ class AssetController extends Controller
             $filename = $request->input('filename', 'upload.' . $extension);
             $size = strlen($content);
         } else {
+            // Check if request body was likely dropped due to exceeding post_max_size
+            $contentLength = $request->header('Content-Length');
+            $postMaxSize = $this->parseSize(ini_get('post_max_size'));
+            
+            if ($contentLength && (int)$contentLength > $postMaxSize) {
+                return response()->json([
+                    'error' => 'File too large. Maximum upload size is ' . ini_get('post_max_size')
+                ], 413);
+            }
+            
             return response()->json(['error' => 'No file or image provided'], 400);
         }
 
@@ -65,8 +111,17 @@ class AssetController extends Controller
         $disk = $bucketConfig['disk'] ?? 'local';
         Storage::disk($disk)->put($storagePath, $content);
 
+        $folderId = $request->input('folder_id');
+        if ($folderId) {
+            $folder = $request->user()->folders()->find($folderId);
+            if (!$folder) {
+                $folderId = null;
+            }
+        }
+
         $asset = $request->user()->assets()->create([
             'bucket' => $bucket,
+            'folder_id' => $folderId,
             'storage_key' => $storageKey,
             'filename' => $filename,
             'mime_type' => $mimeType,
@@ -100,6 +155,30 @@ class AssetController extends Controller
         $asset->delete();
 
         return response()->json(['message' => 'Asset deleted']);
+    }
+
+    public function move(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'asset_ids' => 'required|array',
+            'asset_ids.*' => 'uuid|exists:assets,id',
+            'folder_id' => 'nullable|uuid',
+        ]);
+
+        $folderId = $validated['folder_id'] ?? null;
+
+        if ($folderId) {
+            $folder = $request->user()->folders()->find($folderId);
+            if (!$folder) {
+                return response()->json(['error' => 'Folder not found'], 404);
+            }
+        }
+
+        $updated = Asset::whereIn('id', $validated['asset_ids'])
+            ->where('user_id', $request->user()->id)
+            ->update(['folder_id' => $folderId]);
+
+        return response()->json(['moved' => $updated]);
     }
 
     public function share(Request $request, Asset $asset): JsonResponse
@@ -143,13 +222,23 @@ class AssetController extends Controller
 
     private function formatAsset(Asset $asset): array
     {
+        $tags = $asset->relationLoaded('tags') 
+            ? $asset->tags->map(fn ($tag) => [
+                'id' => $tag->id,
+                'name' => $tag->name,
+                'color' => $tag->color,
+            ])->toArray()
+            : [];
+
         return [
             'id' => $asset->id,
             'bucket' => $asset->bucket,
+            'folderId' => $asset->folder_id,
             'filename' => $asset->filename,
             'mimeType' => $asset->mime_type,
             'size' => $asset->size,
             'metadata' => $asset->metadata,
+            'tags' => $tags,
             'created' => $asset->created_at->toIso8601String(),
             'updated' => $asset->updated_at->toIso8601String(),
         ];
@@ -164,6 +253,20 @@ class AssetController extends Controller
             'image/webp' => 'webp',
             'image/svg+xml' => 'svg',
             default => 'bin',
+        };
+    }
+
+    private function parseSize(string $size): int
+    {
+        $size = trim($size);
+        $unit = strtolower(substr($size, -1));
+        $value = (int) $size;
+
+        return match ($unit) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => $value,
         };
     }
 }

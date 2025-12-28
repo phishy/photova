@@ -24,7 +24,7 @@
             </template>
             <a
                 href="/dashboard/keys"
-                class="px-3.5 py-2 bg-[#238636] rounded-md text-white text-[13px] font-medium"
+                class="px-3.5 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] rounded-md text-white text-[13px] font-medium transition-colors"
             >
                 Manage Keys
             </a>
@@ -48,7 +48,7 @@
                 </p>
                 <a
                     href="/dashboard/keys"
-                    class="inline-block px-5 py-2.5 bg-[#238636] text-white rounded-md text-sm font-medium"
+                    class="inline-block px-5 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-md text-sm font-medium transition-colors"
                 >
                     Create API Key
                 </a>
@@ -67,7 +67,7 @@
                 </p>
                 <a
                     href="/dashboard/keys"
-                    class="inline-block px-5 py-2.5 bg-[#238636] text-white rounded-md text-sm font-medium"
+                    class="inline-block px-5 py-2.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-md text-sm font-medium transition-colors"
                 >
                     Manage API Keys
                 </a>

@@ -16,21 +16,21 @@
         >
         <button
             @click="createKey"
-            class="px-5 py-2.5 bg-[#238636] border border-[#238636] rounded-md text-white text-sm font-medium hover:bg-[#2ea043] transition-colors"
+            class="px-5 py-2.5 bg-[#2563eb] border border-[#2563eb] rounded-md text-white text-sm font-medium hover:bg-[#1d4ed8] hover:border-[#1d4ed8] transition-colors"
         >
             Create key
         </button>
     </div>
 
     <!-- New Key Banner -->
-    <div x-show="createdKey" x-cloak class="bg-[#238636]/15 border border-[#238636] rounded-md p-5 mb-6">
+    <div x-show="createdKey" x-cloak class="bg-[#2563eb]/15 border border-[#2563eb] rounded-md p-5 mb-6">
         <div class="text-[13px] text-[#8b949e] mb-3">
             Your new API key (copy it now — you won't see it again)
         </div>
         <code class="block p-3.5 bg-[#0d1117] border border-[#30363d] rounded-md font-mono text-[13px] text-[#c9d1d9] mb-3 break-all" x-text="createdKey"></code>
         <button
             @click="navigator.clipboard.writeText(createdKey); copySuccess = true; setTimeout(() => copySuccess = false, 2000)"
-            class="px-4 py-2 bg-[#238636] rounded-md text-white text-[13px] font-medium"
+            class="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] rounded-md text-white text-[13px] font-medium transition-colors"
             x-text="copySuccess ? 'Copied!' : 'Copy'"
         ></button>
     </div>
