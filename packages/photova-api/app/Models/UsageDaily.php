@@ -19,6 +19,8 @@ class UsageDaily extends Model
         'request_count',
         'error_count',
         'total_latency_ms',
+        'total_cost',
+        'total_price',
     ];
 
     protected function casts(): array
@@ -28,7 +30,14 @@ class UsageDaily extends Model
             'request_count' => 'integer',
             'error_count' => 'integer',
             'total_latency_ms' => 'integer',
+            'total_cost' => 'decimal:6',
+            'total_price' => 'decimal:6',
         ];
+    }
+
+    public function getTotalMarginAttribute(): float
+    {
+        return (float) ($this->total_price ?? 0) - (float) ($this->total_cost ?? 0);
     }
 
     public function user(): BelongsTo

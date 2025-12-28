@@ -53,6 +53,12 @@
                 <div class="text-sm text-[#c9d1d9]" x-text="(current.used || 0).toLocaleString() + ' / ' + (current.limit || 100).toLocaleString()"></div>
                 <div class="text-xs text-[#8b949e]">requests this month</div>
             </div>
+            <!-- Current Period Charges -->
+            <div class="mt-4 pt-4 border-t border-[#30363d] w-full text-center relative">
+                <div class="text-xs text-[#8b949e] mb-1">Current Charges</div>
+                <div class="text-xl font-semibold text-[#c9d1d9]" x-text="'$' + (current.totalPrice || 0).toFixed(2)"></div>
+                <div class="text-xs text-[#8b949e] mt-1">this billing period</div>
+            </div>
         </div>
 
         <!-- Stats Cards -->

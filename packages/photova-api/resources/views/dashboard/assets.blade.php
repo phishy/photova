@@ -535,7 +535,8 @@
                             <!-- Files -->
                             <template x-for="asset in assets" :key="'asset-' + asset.id">
                                 <tr 
-                                    class="hover:bg-[#21262d] transition-colors"
+                                    @click="isImage(asset) ? openLightbox(asset.id) : openDetailsModal(asset)"
+                                    class="hover:bg-[#21262d] transition-colors cursor-pointer"
                                     :class="draggingAssetId === asset.id ? 'opacity-50' : ''"
                                     draggable="true"
                                     @dragstart="startDragAsset($event, asset.id)"
@@ -547,8 +548,7 @@
                                                 <img 
                                                     :src="'/api/assets/' + asset.id + '?download=true'" 
                                                     :alt="asset.filename" 
-                                                    class="w-8 h-8 rounded object-cover cursor-pointer"
-                                                    @click="openLightbox(asset.id)"
+                                                    class="w-8 h-8 rounded object-cover"
                                                 >
                                             </template>
                                             <template x-if="!isImage(asset)">

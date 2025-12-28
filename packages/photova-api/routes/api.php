@@ -5,9 +5,11 @@ use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FolderController;
 use App\Http\Controllers\Api\OperationController;
+use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UsageController;
+use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\OptionalAuth;
 use Illuminate\Support\Facades\Route;
 
@@ -68,4 +70,13 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::prefix('v1')->middleware(OptionalAuth::class)->group(function () {
     Route::post('/{operation}', [OperationController::class, 'execute'])
         ->where('operation', 'background-remove|upscale|unblur|colorize|inpaint|restore|analyze');
+});
+
+Route::middleware(['auth:sanctum', EnsureSuperAdmin::class])->prefix('admin')->group(function () {
+    Route::get('/pricing', [PricingController::class, 'index']);
+    Route::get('/pricing/summary', [PricingController::class, 'summary']);
+    Route::post('/pricing', [PricingController::class, 'store']);
+    Route::get('/pricing/{pricing}', [PricingController::class, 'show']);
+    Route::patch('/pricing/{pricing}', [PricingController::class, 'update']);
+    Route::delete('/pricing/{pricing}', [PricingController::class, 'destroy']);
 });

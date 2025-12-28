@@ -15,4 +15,13 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/usage', fn() => view('dashboard.usage'))->name('dashboard.usage');
     Route::get('/assets', fn() => view('dashboard.assets'))->name('dashboard.assets');
     Route::get('/playground', fn() => view('dashboard.playground'))->name('dashboard.playground');
+    
+    // Admin routes (role check handled client-side via Alpine.js)
+    Route::prefix('admin')->group(function () {
+        Route::get('/analytics', fn() => view('dashboard.admin.analytics'))->name('dashboard.admin.analytics');
+        Route::get('/pricing', fn() => view('dashboard.pricing'))->name('dashboard.admin.pricing');
+    });
+    
+    // Legacy redirect for old pricing URL
+    Route::get('/pricing', fn() => redirect()->route('dashboard.admin.pricing'));
 });

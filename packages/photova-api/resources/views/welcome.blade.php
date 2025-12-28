@@ -22,8 +22,7 @@
     <meta name="twitter:title" content="Photova - Open Source AI Media Infrastructure">
     <meta name="twitter:description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
     <meta name="twitter:image" content="{{ url('/og-image.png') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script>window.csrfToken = '{{ csrf_token() }}';</script>
     <style>
         @keyframes gradient-x {

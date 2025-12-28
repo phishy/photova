@@ -21,8 +21,7 @@
     <meta name="twitter:title" content="API Documentation - Photova">
     <meta name="twitter:description" content="Complete API documentation for Photova - AI media infrastructure with asset management, processing APIs, and embeddable editor.">
     <meta name="twitter:image" content="{{ url('/og-image.png') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         html { scroll-behavior: smooth; }
         .prose code { background: rgba(255,255,255,0.1); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875em; }

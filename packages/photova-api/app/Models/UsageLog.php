@@ -14,8 +14,12 @@ class UsageLog extends Model
         'user_id',
         'api_key_id',
         'operation',
+        'provider',
+        'model',
         'status',
         'latency_ms',
+        'cost',
+        'price',
         'request_id',
         'error_message',
         'metadata',
@@ -26,7 +30,14 @@ class UsageLog extends Model
         return [
             'metadata' => 'array',
             'latency_ms' => 'integer',
+            'cost' => 'decimal:6',
+            'price' => 'decimal:6',
         ];
+    }
+
+    public function getMarginAttribute(): float
+    {
+        return (float) ($this->price ?? 0) - (float) ($this->cost ?? 0);
     }
 
     public function user(): BelongsTo

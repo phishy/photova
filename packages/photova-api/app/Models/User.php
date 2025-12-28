@@ -17,6 +17,10 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+    public const ROLE_USER = 'user';
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_SUPERADMIN = 'superadmin';
+
     protected $fillable = [
         'name',
         'email',
@@ -25,6 +29,7 @@ class User extends Authenticatable
         'plan',
         'monthly_limit',
         'verified',
+        'role',
     ];
 
     /**
@@ -80,5 +85,20 @@ class User extends Authenticatable
     public function tags(): HasMany
     {
         return $this->hasMany(Tag::class);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === self::ROLE_SUPERADMIN;
+    }
+
+    public function isAdmin(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_SUPERADMIN], true);
+    }
+
+    public function isUser(): bool
+    {
+        return $this->role === self::ROLE_USER;
     }
 }
