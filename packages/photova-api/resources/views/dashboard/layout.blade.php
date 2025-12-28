@@ -31,14 +31,51 @@
 </head>
 <body class="bg-[#0d1117] text-white min-h-screen" x-data="dashboardApp()" x-init="init()">
     <div class="flex min-h-screen">
-        <!-- Sidebar -->
-        <aside class="w-[200px] bg-[#0d1117] border-r border-white/[0.08] p-4 flex flex-col fixed top-0 left-0 bottom-0">
-            <a href="/" class="flex items-center gap-2 text-[15px] font-semibold mb-8 px-2">
+        <!-- Mobile Header -->
+        <header class="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#0d1117] border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2 text-[15px] font-semibold">
                 <span class="text-lg">☀️</span>
                 <span>Photova</span>
             </a>
+            <button @click="sidebarOpen = !sidebarOpen" class="p-2 text-[#8b949e] hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Mobile Sidebar Overlay -->
+        <div 
+            x-show="sidebarOpen" 
+            x-transition:enter="transition-opacity ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="sidebarOpen = false"
+            class="md:hidden fixed inset-0 bg-black/50 z-40"
+            x-cloak
+        ></div>
+
+        <!-- Sidebar -->
+        <aside 
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+            class="w-[240px] md:w-[200px] bg-[#0d1117] border-r border-white/[0.08] p-4 flex flex-col fixed top-0 left-0 bottom-0 z-50 md:translate-x-0 transition-transform duration-200"
+        >
+            <div class="flex items-center justify-between mb-8 px-2">
+                <a href="/" class="flex items-center gap-2 text-[15px] font-semibold">
+                    <span class="text-lg">☀️</span>
+                    <span>Photova</span>
+                </a>
+                <button @click="sidebarOpen = false" class="md:hidden p-1 text-[#8b949e] hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
             
-            <nav class="flex-1">
+            <nav class="flex-1" @click="sidebarOpen = false">
                 <a href="/dashboard/assets" class="flex items-center gap-3 px-3 py-2.5 rounded-md mb-0.5 text-sm font-medium transition-colors {{ request()->is('dashboard/assets') ? 'bg-[#388bfd26] text-[#58a6ff]' : 'text-[#8b949e] hover:text-[#c9d1d9]' }}">
                     <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
@@ -82,7 +119,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="flex-1 ml-[200px] p-8 min-h-screen bg-[#0d1117]">
+        <main class="flex-1 md:ml-[200px] p-4 md:p-8 pt-20 md:pt-8 min-h-screen bg-[#0d1117]">
             @yield('content')
         </main>
 
@@ -142,6 +179,7 @@
             return {
                 user: null,
                 authChecked: false,
+                sidebarOpen: false,
 
                 async init() {
                     try {
