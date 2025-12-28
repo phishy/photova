@@ -41,7 +41,7 @@ class ProviderManager
 
     public function execute(string $operation, string $image, array $options = []): array
     {
-        $config = config("brighten.operations.{$operation}");
+        $config = config("photova.operations.{$operation}");
 
         if (!$config) {
             throw new Exception("Operation '{$operation}' is not configured");
