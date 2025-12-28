@@ -3,46 +3,91 @@
 @section('title', 'Assets')
 
 @section('content')
-<div x-data="assetsPage()" x-init="loadAssets()" @keydown.escape.window="closeLightbox()">
-    <h1 class="text-2xl font-semibold tracking-tight text-[#c9d1d9] mb-8">Assets</h1>
-
-    <!-- Upload Zone -->
-    <div
-        @click="$refs.fileInput.click()"
-        @drop.prevent="handleDrop($event)"
-        @dragover.prevent="dragOver = true"
-        @dragleave="dragOver = false"
-        class="border-2 border-dashed rounded-lg p-10 text-center mb-8 cursor-pointer transition-all"
-        :class="dragOver ? 'border-[#58a6ff] bg-[#58a6ff]/10' : 'border-[#30363d] bg-[#161b22]'"
+<div 
+    x-data="assetsPage()" 
+    x-init="loadAssets()" 
+    @keydown.escape.window="closeLightbox()"
+    @drop.prevent="handleDrop($event)"
+    @dragover.prevent="dragOver = true"
+    @dragleave.prevent="dragOver = false"
+    @dragend="dragOver = false"
+    class="min-h-[calc(100vh-4rem)] relative"
+>
+    <!-- Hidden file input -->
+    <input
+        x-ref="fileInput"
+        type="file"
+        accept="image/*"
+        @change="handleFileSelect($event)"
+        class="hidden"
     >
-        <input
-            x-ref="fileInput"
-            type="file"
-            accept="image/*"
-            @change="handleFileSelect($event)"
-            class="hidden"
+
+    <!-- Drag overlay (shows when dragging files over the page) -->
+    <div
+        x-show="dragOver"
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-100"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="absolute inset-0 bg-[#58a6ff]/10 border-2 border-dashed border-[#58a6ff] rounded-lg z-40 flex items-center justify-center pointer-events-none"
+    >
+        <div class="text-center">
+            <div class="text-4xl mb-2">📁</div>
+            <div class="text-[#58a6ff] font-medium">Drop to upload</div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-semibold tracking-tight text-[#c9d1d9]">Assets</h1>
+        <button
+            @click="$refs.fileInput.click()"
+            :disabled="uploading"
+            class="flex items-center gap-2 px-4 py-2 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] hover:border-[#8b949e] disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-[#c9d1d9] text-sm font-medium transition-colors"
         >
-        <template x-if="uploading">
-            <div class="text-[#8b949e] text-sm">Uploading...</div>
-        </template>
-        <template x-if="!uploading">
-            <div>
-                <div class="text-3xl mb-3">📁</div>
-                <div class="text-[#c9d1d9] text-sm font-medium mb-1">Drop an image here or click to upload</div>
-                <div class="text-[#8b949e] text-[13px]">PNG, JPG, WebP, GIF up to 10MB</div>
-            </div>
-        </template>
+            <template x-if="uploading">
+                <span class="flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Uploading...
+                </span>
+            </template>
+            <template x-if="!uploading">
+                <span class="flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Upload
+                </span>
+            </template>
+        </button>
     </div>
 
     <!-- Loading State -->
     <template x-if="loading">
-        <div class="text-center text-[#8b949e] py-12">Loading...</div>
+        <div class="flex items-center justify-center py-20">
+            <svg class="animate-spin h-6 w-6 text-[#8b949e]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </div>
     </template>
 
     <!-- Empty State -->
     <template x-if="!loading && assets.length === 0">
-        <div class="bg-[#161b22] rounded-md border border-[#30363d] p-12 text-center text-[#8b949e] text-sm">
-            No assets yet. Upload an image to get started.
+        <div class="flex flex-col items-center justify-center py-20 text-center">
+            <div class="w-16 h-16 rounded-full bg-[#21262d] flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-[#8b949e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <h3 class="text-[#c9d1d9] font-medium mb-1">No assets yet</h3>
+            <p class="text-[#8b949e] text-sm mb-4">Upload images to get started</p>
+            <p class="text-[#6e7681] text-xs">Drag & drop anywhere or use the Upload button</p>
         </div>
     </template>
 
@@ -50,10 +95,10 @@
     <template x-if="!loading && assets.length > 0">
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <template x-for="asset in assets" :key="asset.id">
-                <div class="bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden">
+                <div class="group bg-[#161b22] rounded-lg border border-[#30363d] overflow-hidden hover:border-[#8b949e]/50 transition-colors">
                     <div
                         @click="isImage(asset) && openLightbox(asset.id)"
-                        class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden"
+                        class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden relative"
                         :class="isImage(asset) ? 'cursor-pointer' : ''"
                     >
                         <template x-if="isImage(asset)">
@@ -62,6 +107,10 @@
                         <template x-if="!isImage(asset)">
                             <span class="text-5xl">📄</span>
                         </template>
+                        <!-- Hover overlay -->
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span class="text-white text-xs font-medium">Click to preview</span>
+                        </div>
                     </div>
                     <div class="p-3">
                         <div class="text-[13px] font-medium text-[#c9d1d9] mb-1 truncate" x-text="asset.filename"></div>
@@ -69,20 +118,20 @@
                         <div class="flex gap-2">
                             <template x-if="isImage(asset)">
                                 <button
-                                    @click="editAsset(asset.id)"
+                                    @click.stop="editAsset(asset.id)"
                                     class="flex-1 py-1.5 bg-[#58a6ff]/10 border border-[#58a6ff]/40 rounded-md text-[#58a6ff] text-xs hover:bg-[#58a6ff]/20 transition-colors"
                                 >
                                     Edit
                                 </button>
                             </template>
                             <button
-                                @click="shareAsset(asset.id)"
+                                @click.stop="shareAsset(asset.id)"
                                 class="flex-1 py-1.5 bg-transparent border border-[#30363d] rounded-md text-[#8b949e] text-xs hover:border-[#8b949e] hover:text-[#c9d1d9] transition-colors"
                             >
                                 Share
                             </button>
                             <button
-                                @click="deleteAsset(asset.id)"
+                                @click.stop="deleteAsset(asset.id)"
                                 class="px-2.5 py-1.5 bg-transparent border border-[#f8514966] rounded-md text-[#f85149] text-xs hover:bg-[#f8514919] transition-colors"
                             >
                                 ✕
@@ -241,8 +290,10 @@
                 try {
                     await window.apiFetch(`/api/assets/${id}`, { method: 'DELETE' });
                     await this.loadAssets();
+                    this.$dispatch('toast', { message: 'Asset deleted', type: 'success' });
                 } catch (e) {
                     console.error('Delete failed:', e);
+                    this.$dispatch('toast', { message: 'Delete failed', type: 'error' });
                 }
             },
 
