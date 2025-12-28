@@ -1,3 +1,18 @@
+# Stage 1: Build frontend assets
+FROM node:20-alpine AS frontend
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci --ignore-scripts
+
+COPY vite.config.js postcss.config.js ./
+COPY resources/ ./resources/
+
+RUN npm run build
+
+
+# Stage 2: PHP application
 FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
@@ -30,6 +45,9 @@ WORKDIR /var/www/html
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
 COPY . .
+
+# Copy built frontend assets from stage 1
+COPY --from=frontend /app/public/build ./public/build
 
 RUN cp .env.example .env \
     && composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts \

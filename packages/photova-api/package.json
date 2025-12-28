@@ -7,8 +7,7 @@
         "dev": "vite"
     },
     "dependencies": {
-        "alpinejs": "^3.15.3",
-        "brighten": "file:../photova"
+        "alpinejs": "^3.15.3"
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4.0.0",
