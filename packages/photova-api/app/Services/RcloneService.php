@@ -291,6 +291,10 @@ class RcloneService
         
         $params = [];
         foreach ($config as $key => $value) {
+            // SFTP passwords must be obscured for rclone
+            if ($key === 'pass' && !empty($value)) {
+                $value = $this->obscurePassword((string) $value);
+            }
             if (is_bool($value)) {
                 $value = $value ? 'true' : 'false';
             }
@@ -303,5 +307,29 @@ class RcloneService
         $paramString = implode(',', $params);
         
         return ":{$type},{$paramString}:{$bucketName}";
+    }
+
+    private function obscurePassword(string $password): string
+    {
+        try {
+            $response = Http::timeout(5)
+                ->post("{$this->apiUrl}/core/obscure", [
+                    'clear' => $password,
+                ]);
+
+            if ($response->successful()) {
+                return $response->json('obscured') ?? $password;
+            }
+
+            Log::warning('Failed to obscure password via rclone API', [
+                'status' => $response->status(),
+            ]);
+            return $password;
+        } catch (Exception $e) {
+            Log::warning('Exception obscuring password', [
+                'error' => $e->getMessage(),
+            ]);
+            return $password;
+        }
     }
 }

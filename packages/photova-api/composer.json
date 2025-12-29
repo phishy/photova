@@ -10,7 +10,9 @@
         "aws/aws-sdk-php": "^3.369",
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10.1"
+        "laravel/tinker": "^2.10.1",
+        "simonhamp/the-og": "^0.7.0",
+        "spatie/browsershot": "^5.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

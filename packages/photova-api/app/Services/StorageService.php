@@ -181,11 +181,26 @@ class StorageService
 
     private function retrieveFromUserBucket(StorageBucket $bucket, string $storageKey): ?string
     {
+        // Try Rclone first - it handles endpoint/networking consistently with writes
+        try {
+            $contents = $this->rclone->readFile($bucket, $storageKey);
+            if ($contents !== null && $contents !== '') {
+                return $contents;
+            }
+        } catch (Exception $e) {
+            Log::debug('Rclone read failed, trying S3 fallback', [
+                'bucket_id' => $bucket->id,
+                'key' => $storageKey,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Fallback to AWS SDK for S3-compatible storage
         if ($bucket->isS3Compatible()) {
             return $this->retrieveFromS3($bucket, $storageKey);
         }
 
-        Log::warning('Non-S3 user bucket retrieval not yet supported', [
+        Log::warning('Failed to retrieve file from user bucket', [
             'bucket_id' => $bucket->id,
             'provider' => $bucket->provider,
         ]);

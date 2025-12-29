@@ -8,6 +8,8 @@ Route::get('/', function () {
 
 Route::get('/docs', fn() => view('docs'))->name('docs');
 
+Route::get('/og-preview', fn() => view('og.image'))->name('og.preview');
+
 // Dashboard routes (auth handled client-side via Alpine.js)
 Route::prefix('dashboard')->group(function () {
     Route::get('/', fn() => view('dashboard.index'))->name('dashboard');
