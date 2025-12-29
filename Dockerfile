@@ -27,10 +27,14 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/html
-
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
+COPY packages/photova/ /var/www/photova/
+
+WORKDIR /var/www/photova
+RUN npm ci && npm run build
+
+WORKDIR /var/www/html
 COPY packages/photova-api/ .
 
 RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
