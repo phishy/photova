@@ -49,12 +49,12 @@ services:
     ports:
       # - "5572:5572"
       - "5572"
-    # healthcheck:
-    #   test: ["CMD", "wget", "-q", "--spider", "http://localhost:5572/core/version"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 3
-    #   start_period: 5s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5572/core/version || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   postgres:
     image: postgres:16-alpine
