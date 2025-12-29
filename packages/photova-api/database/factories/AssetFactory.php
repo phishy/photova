@@ -16,7 +16,7 @@ class AssetFactory extends Factory
         return [
             'id' => Str::uuid(),
             'user_id' => User::factory(),
-            'bucket' => 'assets',
+            'storage_bucket_id' => null,
             'storage_key' => Str::uuid() . '.png',
             'filename' => fake()->word() . '.png',
             'mime_type' => 'image/png',

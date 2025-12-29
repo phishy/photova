@@ -60,6 +60,20 @@ return [
             'report' => false,
         ],
 
+        'assets' => [
+            'driver' => 'local',
+            'root' => storage_path('app/assets'),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'thumbs' => [
+            'driver' => 'local',
+            'root' => storage_path('app/thumbs'),
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*

@@ -14,7 +14,7 @@ class Asset extends Model
 
     protected $fillable = [
         'user_id',
-        'bucket',
+        'storage_bucket_id',
         'folder_id',
         'storage_key',
         'filename',
@@ -41,8 +41,23 @@ class Asset extends Model
         return $this->belongsTo(Folder::class);
     }
 
+    public function storageBucket(): BelongsTo
+    {
+        return $this->belongsTo(StorageBucket::class);
+    }
+
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class)->withTimestamps();
+    }
+
+    public function isOnSystemStorage(): bool
+    {
+        return $this->storage_bucket_id === null;
+    }
+
+    public function isOnUserStorage(): bool
+    {
+        return $this->storage_bucket_id !== null;
     }
 }

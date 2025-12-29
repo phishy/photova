@@ -4,14 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Photova - Open Source AI Media Infrastructure</title>
-    <meta name="description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
+    <title>Photova - The Ultimate Photo Platform</title>
+    <meta name="description" content="Edit, organize, and enhance your entire photo library with AI-powered tools. Open source. Self-hosted. Yours forever.">
     
     <!-- OpenGraph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url('/') }}">
-    <meta property="og:title" content="Photova - Open Source AI Media Infrastructure">
-    <meta property="og:description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
+    <meta property="og:title" content="Photova - The Ultimate Photo Platform">
+    <meta property="og:description" content="Edit, organize, and enhance your entire photo library with AI-powered tools. Open source. Self-hosted. Yours forever.">
     <meta property="og:image" content="{{ url('/og-image.png') }}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -19,8 +19,8 @@
     
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Photova - Open Source AI Media Infrastructure">
-    <meta name="twitter:description" content="Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.">
+    <meta name="twitter:title" content="Photova - The Ultimate Photo Platform">
+    <meta name="twitter:description" content="Edit, organize, and enhance your entire photo library with AI-powered tools. Open source. Self-hosted. Yours forever.">
     <meta name="twitter:image" content="{{ url('/og-image.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script>window.csrfToken = '{{ csrf_token() }}';</script>
@@ -95,16 +95,16 @@
         <div class="relative z-10 text-center max-w-4xl">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-sm text-gray-400 mb-8">
                 <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse-slow"></span>
-                Open source + managed cloud
+                Open source &middot; Self-hosted &middot; Yours forever
             </div>
 
             <h1 class="text-5xl md:text-7xl font-bold tracking-tight leading-tight mb-6">
-                AI media infrastructure
+                The Ultimate
                 <br>
-                <span class="bg-gradient-to-r from-blue-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent animate-gradient">that ships wherever you do</span>
+                <span class="bg-gradient-to-r from-blue-500 via-cyan-400 to-purple-500 bg-clip-text text-transparent animate-gradient">Photo Platform</span>
             </h1>
 
-            <p class="text-lg md:text-xl text-gray-400 max-w-xl mx-auto mb-10 leading-relaxed">Run Photova in your own stack or flip on our managed cloud to unify asset storage, processing APIs, and the embeddable editor in one workflow.</p>
+            <p class="text-lg md:text-xl text-gray-400 max-w-xl mx-auto mb-10 leading-relaxed">Edit, organize, and enhance your entire photo library with AI-powered tools. Professional-grade. No subscriptions. No limits.</p>
 
             <div class="flex gap-4 justify-center flex-wrap">
                 <template x-if="isLoggedIn">
@@ -126,8 +126,28 @@
 
     <section id="features" class="py-32 px-6 bg-black border-t border-white/5">
         <div class="max-w-6xl mx-auto">
+            <!-- Three Pillars -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-32">
+                <div class="p-8 bg-[#0a0a0a] border border-white/[0.08] rounded-2xl hover:border-blue-500/30 transition-all">
+                    <div class="w-14 h-14 rounded-xl mb-6 flex items-center justify-center text-2xl bg-gradient-to-br from-blue-500 to-cyan-400">🎨</div>
+                    <h3 class="text-xl font-semibold mb-3">Edit</h3>
+                    <p class="text-gray-400 leading-relaxed">Professional-grade editing right in your browser. Layers, filters, crop, brush, text — everything you need, nothing you don't.</p>
+                </div>
+                <div class="p-8 bg-[#0a0a0a] border border-white/[0.08] rounded-2xl hover:border-purple-500/30 transition-all">
+                    <div class="w-14 h-14 rounded-xl mb-6 flex items-center justify-center text-2xl bg-gradient-to-br from-purple-500 to-pink-500">📁</div>
+                    <h3 class="text-xl font-semibold mb-3">Organize</h3>
+                    <p class="text-gray-400 leading-relaxed">Your entire library, beautifully managed. Upload, tag, search, and access your images from anywhere. Connect your own storage.</p>
+                </div>
+                <div class="p-8 bg-[#0a0a0a] border border-white/[0.08] rounded-2xl hover:border-cyan-500/30 transition-all">
+                    <div class="w-14 h-14 rounded-xl mb-6 flex items-center justify-center text-2xl bg-gradient-to-br from-cyan-400 to-purple-500">✨</div>
+                    <h3 class="text-xl font-semibold mb-3">Enhance</h3>
+                    <p class="text-gray-400 leading-relaxed">AI superpowers at your fingertips. Remove backgrounds, upscale, restore old photos, colorize, and more — in seconds.</p>
+                </div>
+            </div>
+
+            <!-- API Section -->
             <div class="text-center mb-16">
-                <p class="text-sm text-blue-500 font-medium mb-3 uppercase tracking-wider">Developer Experience</p>
+                <p class="text-sm text-blue-500 font-medium mb-3 uppercase tracking-wider">For Developers</p>
                 <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">Simple API, powerful results</h2>
                 <p class="text-lg text-gray-500 max-w-lg mx-auto">One endpoint per operation. JSON in, JSON out. Ship in minutes.</p>
             </div>
@@ -147,19 +167,19 @@
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
-                    <div class="text-2xl mb-2">⚡</div>
-                    <div class="text-3xl font-bold mb-1">&lt; 500ms</div>
-                    <div class="text-sm text-gray-500">Average response time</div>
+                    <div class="text-2xl mb-2">🎨</div>
+                    <div class="text-3xl font-bold mb-1">15+</div>
+                    <div class="text-sm text-gray-500">Professional filters</div>
                 </div>
                 <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
-                    <div class="text-2xl mb-2">🛡️</div>
-                    <div class="text-3xl font-bold mb-1">99.9%</div>
-                    <div class="text-sm text-gray-500">Uptime SLA</div>
+                    <div class="text-2xl mb-2">🧠</div>
+                    <div class="text-3xl font-bold mb-1">7</div>
+                    <div class="text-sm text-gray-500">AI operations</div>
                 </div>
                 <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
-                    <div class="text-2xl mb-2">📈</div>
-                    <div class="text-3xl font-bold mb-1">10M+</div>
-                    <div class="text-sm text-gray-500">Images processed</div>
+                    <div class="text-2xl mb-2">📦</div>
+                    <div class="text-3xl font-bold mb-1">5 min</div>
+                    <div class="text-sm text-gray-500">Deploy time</div>
                 </div>
             </div>
         </div>
@@ -168,8 +188,9 @@
     <section class="py-32 px-6 bg-black border-t border-white/5">
         <div class="max-w-6xl mx-auto">
             <div class="text-center mb-16">
-                <p class="text-sm text-purple-500 font-medium mb-3 uppercase tracking-wider">Operations</p>
-                <h2 class="text-4xl md:text-5xl font-bold tracking-tight">Everything you need</h2>
+                <p class="text-sm text-purple-500 font-medium mb-3 uppercase tracking-wider">AI-Powered</p>
+                <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">One-click enhancements</h2>
+                <p class="text-lg text-gray-500 max-w-lg mx-auto">Powerful AI that used to take hours, now runs in seconds.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -185,11 +206,48 @@
         </div>
     </section>
 
+    <section class="py-32 px-6 bg-black border-t border-white/5">
+        <div class="max-w-4xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <p class="text-sm text-green-500 font-medium mb-3 uppercase tracking-wider">Open Source</p>
+                    <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-6">Your photos stay yours</h2>
+                    <p class="text-lg text-gray-400 leading-relaxed mb-6">No vendor lock-in. No one mining your images. Photova runs on your servers — a laptop, a VPS, or your own cloud. You control the data, the costs, and the future.</p>
+                    <div class="flex gap-4">
+                        <a href="https://github.com/phishy/photova" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm font-medium hover:bg-white/10 transition">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                            Star on GitHub
+                        </a>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
+                        <div class="text-3xl mb-2">🔒</div>
+                        <div class="text-sm text-gray-400">Self-hosted</div>
+                    </div>
+                    <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
+                        <div class="text-3xl mb-2">💾</div>
+                        <div class="text-sm text-gray-400">Your storage</div>
+                    </div>
+                    <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
+                        <div class="text-3xl mb-2">🔓</div>
+                        <div class="text-sm text-gray-400">MIT licensed</div>
+                    </div>
+                    <div class="p-6 bg-white/[0.02] border border-white/5 rounded-xl text-center">
+                        <div class="text-3xl mb-2">♾️</div>
+                        <div class="text-sm text-gray-400">No limits</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section id="pricing" class="py-32 px-6 bg-black border-t border-white/5">
         <div class="max-w-4xl mx-auto">
             <div class="text-center mb-16">
                 <p class="text-sm text-cyan-500 font-medium mb-3 uppercase tracking-wider">Pricing</p>
                 <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-4">Start free, scale as you grow</h2>
+                <p class="text-lg text-gray-500 max-w-lg mx-auto">No per-image fees. No surprise bills. Just powerful tools.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -220,8 +278,8 @@
     <section id="auth" class="py-32 px-6 bg-black border-t border-white/5">
         <div class="max-w-md mx-auto">
             <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold tracking-tight mb-2" x-text="isLogin ? 'Welcome back' : 'Get started'"></h2>
-                <p class="text-gray-500" x-text="isLogin ? 'Sign in to your account' : 'Create your account in seconds'"></p>
+                <h2 class="text-3xl font-bold tracking-tight mb-2" x-text="isLogin ? 'Welcome back' : 'Ready to take control?'"></h2>
+                <p class="text-gray-500" x-text="isLogin ? 'Sign in to your account' : 'Create your free account and start editing'"></p>
             </div>
 
             <div class="p-8 bg-[#0a0a0a] border border-white/[0.08] rounded-2xl">

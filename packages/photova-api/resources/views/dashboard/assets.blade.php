@@ -20,6 +20,7 @@
         x-ref="fileInput"
         type="file"
         accept="image/*"
+        multiple
         @change="handleFileSelect($event)"
         class="hidden"
     >
@@ -357,7 +358,7 @@
                                             :class="isImage(asset) ? 'cursor-pointer' : ''"
                                         >
                                             <template x-if="isImage(asset)">
-                                                <img :src="'/api/assets/' + asset.id + '?download=true'" :alt="asset.filename" class="w-full h-full object-cover">
+                                                <img :src="'/api/assets/' + asset.id + '/thumb?w=400&h=400'" :alt="asset.filename" class="w-full h-full object-cover">
                                             </template>
                                             <template x-if="!isImage(asset)">
                                                 <span class="text-5xl">📄</span>
@@ -546,7 +547,7 @@
                                         <div class="flex items-center gap-3">
                                             <template x-if="isImage(asset)">
                                                 <img 
-                                                    :src="'/api/assets/' + asset.id + '?download=true'" 
+                                                    :src="'/api/assets/' + asset.id + '/thumb?w=64&h=64'" 
                                                     :alt="asset.filename" 
                                                     class="w-8 h-8 rounded object-cover"
                                                 >
@@ -906,7 +907,7 @@
                 <div class="mb-4">
                     <template x-if="isImage(assetDetails)">
                         <img 
-                            :src="'/api/assets/' + assetDetails.id + '?download=true'" 
+                            :src="'/api/assets/' + assetDetails.id + '/thumb?w=600&h=400'" 
                             :alt="assetDetails.filename"
                             class="w-full h-48 object-contain bg-[#0d1117] rounded-lg"
                         >
@@ -1346,52 +1347,65 @@
                 }
             },
 
-            async uploadFile(file) {
-                this.uploading = true;
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    if (this.currentFolderId) {
-                        formData.append('folder_id', this.currentFolderId);
-                    }
-
-                    const res = await fetch('/api/assets', {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'include',
-                        headers: {
-                            'X-CSRF-TOKEN': window.csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest',
-                        }
-                    });
-
-                    if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.error || 'Upload failed');
-                    }
-
-                    await this.loadAssets();
-                    this.$dispatch('toast', { message: 'File uploaded', type: 'success' });
-                } catch (e) {
-                    console.error('Upload failed:', e);
-                    this.$dispatch('toast', { message: e.message || 'Upload failed', type: 'error' });
-                }
-                this.uploading = false;
-            },
-
-            handleFileSelect(e) {
+            async handleFileSelect(e) {
                 const files = e.target.files;
                 if (files && files.length > 0) {
-                    this.uploadFile(files[0]);
+                    await this.uploadFiles(Array.from(files));
                 }
                 e.target.value = '';
             },
 
-            handleDrop(e) {
+            async handleDrop(e) {
                 this.dragOver = false;
                 const files = e.dataTransfer.files;
                 if (files && files.length > 0) {
-                    this.uploadFile(files[0]);
+                    await this.uploadFiles(Array.from(files));
+                }
+            },
+
+            async uploadFiles(files) {
+                this.uploading = true;
+                let successCount = 0;
+                let failCount = 0;
+                
+                for (const file of files) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        if (this.currentFolderId) {
+                            formData.append('folder_id', this.currentFolderId);
+                        }
+
+                        const res = await fetch('/api/assets', {
+                            method: 'POST',
+                            body: formData,
+                            credentials: 'include',
+                            headers: {
+                                'X-CSRF-TOKEN': window.csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                            }
+                        });
+
+                        if (!res.ok) {
+                            const error = await res.json();
+                            throw new Error(error.error || 'Upload failed');
+                        }
+                        successCount++;
+                    } catch (e) {
+                        console.error('Upload failed:', file.name, e);
+                        failCount++;
+                    }
+                }
+                
+                await this.loadAssets();
+                this.uploading = false;
+                
+                if (successCount > 0 && failCount === 0) {
+                    this.$dispatch('toast', { message: `${successCount} file${successCount > 1 ? 's' : ''} uploaded`, type: 'success' });
+                } else if (successCount > 0 && failCount > 0) {
+                    this.$dispatch('toast', { message: `${successCount} uploaded, ${failCount} failed`, type: 'warning' });
+                } else {
+                    this.$dispatch('toast', { message: 'Upload failed', type: 'error' });
                 }
             },
 

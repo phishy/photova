@@ -50,14 +50,4 @@ return [
             'api_key' => env('REMOVEBG_API_KEY'),
         ],
     ],
-
-    'storage' => [
-        'default' => env('STORAGE_DEFAULT_BUCKET', 'assets'),
-        'buckets' => [
-            'assets' => [
-                'disk' => env('STORAGE_ASSETS_DISK', 'local'),
-                'path' => 'assets',
-            ],
-        ],
-    ],
 ];

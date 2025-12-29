@@ -228,8 +228,10 @@ Laravel 12/PostgreSQL media processing API with dashboard UI.
 - User should be able to list uploaded assets
 - User should be able to download/retrieve an asset by ID
 - User should be able to delete an asset
-- User should be able to configure multiple storage backends (filesystem, S3)
-- User should be able to specify which bucket to use per request
+- User should be able to configure their own storage backends (S3, DigitalOcean, Cloudflare R2, etc.)
+- User should be able to set a default storage bucket for new uploads
+- User should be able to migrate assets between storage buckets
+- System admin can configure platform storage via environment variables
 
 ### Authentication
 - User should be able to sign up and log in
@@ -271,7 +273,8 @@ packages/photova-api/
 ### Controllers (`app/Http/Controllers/Api/`)
 - **AuthController** - signup, login, logout, me, update
 - **ApiKeyController** - CRUD + regenerate
-- **AssetController** - upload (file/base64), list, get, delete
+- **AssetController** - upload (file/base64), list, get, delete (uses StorageService)
+- **StorageController** - bucket CRUD, test connection, migrations, set default
 - **UsageController** - summary, timeseries, current
 - **OperationController** - AI operation execution with usage logging
 - **SystemController** - health, operations, openapi.json
@@ -282,6 +285,8 @@ packages/photova-api/
 
 ### Services (`app/Services/`)
 - **ProviderManager** - Provider registration and fallback routing
+- **StorageService** - Unified interface for system and user storage
+- **RcloneService** - HTTP client for rclone RC API (user storage)
 - **Providers/BaseProvider** - Abstract base with image encode/decode
 - **Providers/ReplicateProvider** - Replicate API integration
 - **Providers/FalProvider** - Fal.ai API integration
@@ -290,7 +295,9 @@ packages/photova-api/
 ### Models (`app/Models/`)
 - **User** - Extended with plan, monthly_limit, verified fields
 - **ApiKey** - API key with prefix, hash, status, scopes
-- **Asset** - UUID-based asset storage with bucket support
+- **Asset** - UUID-based asset storage with storage_bucket_id reference
+- **StorageBucket** - User-configured storage (S3, DO Spaces, R2, etc.) with encrypted credentials
+- **AssetMigration** - Tracks asset migrations between buckets with progress
 - **UsageLog** - Individual request logging
 - **UsageDaily** - Aggregated daily usage stats
 
@@ -325,17 +332,14 @@ return [
             'api_key' => env('REMOVEBG_API_KEY'),
         ],
     ],
-    'storage' => [
-        'default' => 'assets',
-        'buckets' => [
-            'assets' => [
-                'disk' => 'local',
-                'path' => 'assets',
-            ],
-        ],
-    ],
 ];
 ```
+
+### Storage Architecture
+
+Two-tier storage model:
+- **System storage** - Configured via `config/filesystems.php` (assets disk), uses Laravel Filesystem
+- **User storage** - Configured via dashboard UI, stored in `storage_buckets` table, uses Rclone container
 
 ## Environment Variables
 
@@ -349,9 +353,10 @@ AUTH_ENABLED=true
 REPLICATE_API_KEY=r8_xxxxx
 FAL_API_KEY=fal_xxxxx
 REMOVEBG_API_KEY=xxxxx
+RCLONE_API_URL=http://rclone:5572
 ```
 
-## API Routes (22 endpoints)
+## API Routes (35 endpoints)
 
 | Category | Endpoints |
 |----------|-----------|
@@ -360,6 +365,9 @@ REMOVEBG_API_KEY=xxxxx
 | API Keys | `GET/POST /api/keys`, `GET/PATCH/DELETE /api/keys/{id}`, `POST /api/keys/{id}/regenerate` |
 | Usage | `GET /api/usage/summary`, `/timeseries`, `/current` |
 | Assets | `GET/POST /api/assets`, `GET/DELETE /api/assets/{id}` |
+| Storage | `GET/POST /api/storage`, `GET /api/storage/providers`, `GET/PATCH/DELETE /api/storage/{id}` |
+| Storage | `POST /api/storage/{id}/test`, `/api/storage/{id}/default`, `DELETE /api/storage/default` |
+| Migrations | `POST /api/storage/migrate`, `GET /api/storage/migrations`, `GET/POST /api/storage/migrations/{id}` |
 | Operations | `POST /api/v1/{operation}` |
 
 ## Development Commands
@@ -376,11 +384,12 @@ php artisan serve         # Start dev server (port 8000)
 
 ## Testing
 
-Uses Pest PHP with 52 tests covering all endpoints:
+Uses Pest PHP with 79 tests covering all endpoints:
 - `SystemTest` - Health, operations, OpenAPI
 - `AuthTest` - Signup, login, logout, profile
 - `ApiKeyTest` - CRUD, regenerate, authorization
-- `AssetTest` - Upload, list, get, delete, bucket filter
+- `AssetTest` - Upload, list, get, delete, storage bucket filter
+- `StorageTest` - Bucket CRUD, default, test connection, migrations
 - `UsageTest` - Summary, timeseries, current
 - `OperationTest` - All operations with mocked providers
 

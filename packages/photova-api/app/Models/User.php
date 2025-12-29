@@ -87,6 +87,21 @@ class User extends Authenticatable
         return $this->hasMany(Tag::class);
     }
 
+    public function storageBuckets(): HasMany
+    {
+        return $this->hasMany(StorageBucket::class);
+    }
+
+    public function assetMigrations(): HasMany
+    {
+        return $this->hasMany(AssetMigration::class);
+    }
+
+    public function getDefaultStorageBucket(): ?StorageBucket
+    {
+        return $this->storageBuckets()->where('is_default', true)->first();
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === self::ROLE_SUPERADMIN;

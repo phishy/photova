@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FolderController;
 use App\Http\Controllers\Api\OperationController;
 use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UsageController;
@@ -50,6 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/assets', [AssetController::class, 'store']);
     Route::post('/assets/move', [AssetController::class, 'move']);
     Route::get('/assets/{asset}', [AssetController::class, 'show']);
+    Route::get('/assets/{asset}/thumb', [AssetController::class, 'thumbnail']);
     Route::patch('/assets/{asset}', [AssetController::class, 'update']);
     Route::post('/assets/{asset}/share', [AssetController::class, 'share']);
     Route::delete('/assets/{asset}', [AssetController::class, 'destroy']);
@@ -66,6 +68,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/tags/{tag}', [TagController::class, 'update']);
     Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
     Route::post('/assets/{asset}/tags', [TagController::class, 'setAssetTags']);
+
+    Route::get('/storage', [StorageController::class, 'index']);
+    Route::get('/storage/providers', [StorageController::class, 'providers']);
+    Route::post('/storage', [StorageController::class, 'store']);
+    Route::get('/storage/migrations', [StorageController::class, 'migrations']);
+    Route::post('/storage/migrate', [StorageController::class, 'migrate']);
+    Route::delete('/storage/default', [StorageController::class, 'clearDefault']);
+    Route::get('/storage/migrations/{migration}', [StorageController::class, 'migrationStatus']);
+    Route::post('/storage/migrations/{migration}/cancel', [StorageController::class, 'cancelMigration']);
+    Route::get('/storage/{bucket}', [StorageController::class, 'show']);
+    Route::patch('/storage/{bucket}', [StorageController::class, 'update']);
+    Route::delete('/storage/{bucket}', [StorageController::class, 'destroy']);
+    Route::post('/storage/{bucket}/test', [StorageController::class, 'test']);
+    Route::post('/storage/{bucket}/default', [StorageController::class, 'setDefault']);
 });
 
 Route::prefix('v1')->middleware(OptionalAuth::class)->group(function () {

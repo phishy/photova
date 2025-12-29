@@ -5,25 +5,36 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\AnalyzeAsset;
 use App\Models\Asset;
+use App\Models\StorageBucket;
+use App\Services\StorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssetController extends Controller
 {
+    public function __construct(private StorageService $storage)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $bucket = $request->query('bucket', config('photova.storage.default'));
+        $storageBucketId = $request->query('storage_bucket_id');
         $folderId = $request->query('folder_id');
         $search = $request->query('search');
         $tagIds = $request->query('tags');
 
-        $query = $request->user()->assets()
-            ->with('tags')
-            ->where('bucket', $bucket);
+        $query = $request->user()->assets()->with('tags');
+
+        // Filter by storage bucket
+        if ($storageBucketId === 'system') {
+            $query->whereNull('storage_bucket_id');
+        } elseif ($storageBucketId) {
+            $query->where('storage_bucket_id', $storageBucketId);
+        }
 
         // When searching, ignore folder context (flatten results)
         if (!$search) {
@@ -57,11 +68,21 @@ class AssetController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $bucket = $request->query('bucket', config('photova.storage.default'));
-        $bucketConfig = config("photova.storage.buckets.{$bucket}");
-
-        if (!$bucketConfig) {
-            return response()->json(['error' => 'Invalid bucket'], 400);
+        // Resolve storage bucket - use specific bucket, user's default, or system
+        $bucket = null;
+        $storageBucketId = $request->input('storage_bucket_id');
+        
+        if ($storageBucketId && $storageBucketId !== 'system') {
+            $bucket = $request->user()->storageBuckets()->find($storageBucketId);
+            if (!$bucket) {
+                return response()->json(['error' => 'Storage bucket not found'], 404);
+            }
+            if (!$bucket->is_active) {
+                return response()->json(['error' => 'Storage bucket is not active'], 422);
+            }
+        } elseif ($storageBucketId !== 'system') {
+            // Use user's default bucket if set
+            $bucket = $request->user()->getDefaultStorageBucket();
         }
 
         // Check for PHP upload errors (file too large, etc.)
@@ -82,8 +103,12 @@ class AssetController extends Controller
             $file = $request->file('file');
             $filename = $file->getClientOriginalName();
             $mimeType = $file->getMimeType();
-            $size = $file->getSize();
-            $content = $file->get();
+            
+            try {
+                $result = $this->storage->store($request->user(), $file, $filename, $bucket);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Failed to store file: ' . $e->getMessage()], 500);
+            }
         } elseif ($request->has('image')) {
             $imageData = $request->input('image');
             
@@ -97,7 +122,12 @@ class AssetController extends Controller
 
             $extension = $this->getExtensionFromMime($mimeType);
             $filename = $request->input('filename', 'upload.' . $extension);
-            $size = strlen($content);
+            
+            try {
+                $result = $this->storage->store($request->user(), $content, $filename, $bucket);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Failed to store file: ' . $e->getMessage()], 500);
+            }
         } else {
             // Check if request body was likely dropped due to exceeding post_max_size
             $contentLength = $request->header('Content-Length');
@@ -112,12 +142,6 @@ class AssetController extends Controller
             return response()->json(['error' => 'No file or image provided'], 400);
         }
 
-        $storageKey = Str::uuid() . '.' . pathinfo($filename, PATHINFO_EXTENSION);
-        $storagePath = ($bucketConfig['path'] ?? 'assets') . '/' . $storageKey;
-
-        $disk = $bucketConfig['disk'] ?? 'local';
-        Storage::disk($disk)->put($storagePath, $content);
-
         $folderId = $request->input('folder_id');
         if ($folderId) {
             $folder = $request->user()->folders()->find($folderId);
@@ -127,12 +151,12 @@ class AssetController extends Controller
         }
 
         $asset = $request->user()->assets()->create([
-            'bucket' => $bucket,
+            'storage_bucket_id' => $result['storage_bucket_id'],
             'folder_id' => $folderId,
-            'storage_key' => $storageKey,
+            'storage_key' => $result['storage_key'],
             'filename' => $filename,
             'mime_type' => $mimeType,
-            'size' => $size,
+            'size' => $result['size'],
             'metadata' => $request->input('metadata', []),
         ]);
 
@@ -143,12 +167,16 @@ class AssetController extends Controller
         return response()->json(['asset' => $this->formatAsset($asset)], 201);
     }
 
-    public function show(Request $request, Asset $asset): JsonResponse|StreamedResponse
+    public function show(Request $request, Asset $asset): JsonResponse|StreamedResponse|Response
     {
         $this->authorizeAsset($request, $asset);
 
         if ($request->boolean('download')) {
             return $this->download($asset);
+        }
+
+        if ($request->boolean('raw') || $request->boolean('inline')) {
+            return $this->serve($asset);
         }
 
         return response()->json(['asset' => $this->formatAsset($asset)]);
@@ -157,9 +185,6 @@ class AssetController extends Controller
     public function update(Request $request, Asset $asset): JsonResponse
     {
         $this->authorizeAsset($request, $asset);
-
-        $bucketConfig = config("photova.storage.buckets.{$asset->bucket}");
-        $disk = $bucketConfig['disk'] ?? 'local';
 
         if ($request->has('image')) {
             $imageData = $request->input('image');
@@ -172,12 +197,23 @@ class AssetController extends Controller
                 $mimeType = $asset->mime_type;
             }
 
-            $storagePath = ($bucketConfig['path'] ?? 'assets') . '/' . $asset->storage_key;
-            Storage::disk($disk)->put($storagePath, $content);
+            $this->storage->delete($asset);
+            
+            try {
+                $result = $this->storage->store(
+                    $request->user(),
+                    $content,
+                    $asset->filename,
+                    $asset->storageBucket
+                );
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Failed to update file: ' . $e->getMessage()], 500);
+            }
 
             $asset->update([
+                'storage_key' => $result['storage_key'],
                 'mime_type' => $mimeType,
-                'size' => strlen($content),
+                'size' => $result['size'],
             ]);
 
             if (str_starts_with($mimeType, 'image/')) {
@@ -204,11 +240,7 @@ class AssetController extends Controller
     {
         $this->authorizeAsset($request, $asset);
 
-        $bucketConfig = config("photova.storage.buckets.{$asset->bucket}");
-        $disk = $bucketConfig['disk'] ?? 'local';
-        $storagePath = ($bucketConfig['path'] ?? 'assets') . '/' . $asset->storage_key;
-
-        Storage::disk($disk)->delete($storagePath);
+        $this->storage->delete($asset);
         $asset->delete();
 
         return response()->json(['message' => 'Asset deleted']);
@@ -254,19 +286,144 @@ class AssetController extends Controller
         ]);
     }
 
-    public function publicDownload(Asset $asset): StreamedResponse
+    public function publicDownload(Request $request, Asset $asset): StreamedResponse|Response
     {
+        if ($request->boolean('inline') || $request->boolean('raw')) {
+            return $this->serve($asset);
+        }
+        
         return $this->download($asset);
+    }
+
+    public function thumbnail(Request $request, Asset $asset): Response
+    {
+        $this->authorizeAsset($request, $asset);
+
+        $width = (int) $request->query('w', 200);
+        $height = (int) $request->query('h', 200);
+        $width = max(16, min(1200, $width));
+        $height = max(16, min(1200, $height));
+
+        if (!str_starts_with($asset->mime_type, 'image/')) {
+            abort(400, 'Asset is not an image');
+        }
+
+        // Check cache first
+        $cacheKey = $this->getThumbnailCacheKey($asset, $width, $height);
+        if (Storage::disk('thumbs')->exists($cacheKey)) {
+            $resized = Storage::disk('thumbs')->get($cacheKey);
+            return response($resized, 200, [
+                'Content-Type' => 'image/jpeg',
+                'Content-Length' => strlen($resized),
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+                'X-Thumbnail-Cache' => 'HIT',
+            ]);
+        }
+
+        $content = $this->storage->retrieve($asset);
+
+        if ($content === null) {
+            abort(404, 'File not found');
+        }
+
+        $resized = $this->resizeImage($content, $width, $height, $asset->mime_type);
+
+        // Store in cache
+        Storage::disk('thumbs')->put($cacheKey, $resized);
+
+        return response($resized, 200, [
+            'Content-Type' => 'image/jpeg',
+            'Content-Length' => strlen($resized),
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+            'X-Thumbnail-Cache' => 'MISS',
+        ]);
+    }
+
+    private function getThumbnailCacheKey(Asset $asset, int $width, int $height): string
+    {
+        // Include updated_at timestamp in cache key to auto-invalidate when asset changes
+        $timestamp = $asset->updated_at->timestamp;
+        return "{$asset->id}/{$width}x{$height}_{$timestamp}.jpg";
+    }
+
+    public function clearThumbnailCache(Asset $asset): void
+    {
+        $cacheDir = $asset->id;
+        if (Storage::disk('thumbs')->exists($cacheDir)) {
+            Storage::disk('thumbs')->deleteDirectory($cacheDir);
+        }
+    }
+
+    private function resizeImage(string $content, int $width, int $height, string $mimeType): string
+    {
+        $source = imagecreatefromstring($content);
+
+        if ($source === false) {
+            throw new \RuntimeException('Failed to create image from content');
+        }
+
+        $srcWidth = imagesx($source);
+        $srcHeight = imagesy($source);
+
+        $srcRatio = $srcWidth / $srcHeight;
+        $dstRatio = $width / $height;
+
+        if ($srcRatio > $dstRatio) {
+            $newHeight = $height;
+            $newWidth = (int) ($height * $srcRatio);
+        } else {
+            $newWidth = $width;
+            $newHeight = (int) ($width / $srcRatio);
+        }
+
+        $resized = imagecreatetruecolor($newWidth, $newHeight);
+        imagecopyresampled($resized, $source, 0, 0, 0, 0, $newWidth, $newHeight, $srcWidth, $srcHeight);
+
+        $cropX = (int) (($newWidth - $width) / 2);
+        $cropY = (int) (($newHeight - $height) / 2);
+        $cropped = imagecrop($resized, ['x' => $cropX, 'y' => $cropY, 'width' => $width, 'height' => $height]);
+
+        ob_start();
+        imagejpeg($cropped ?: $resized, null, 85);
+        $output = ob_get_clean();
+
+        imagedestroy($source);
+        imagedestroy($resized);
+        if ($cropped) {
+            imagedestroy($cropped);
+        }
+
+        return $output;
     }
 
     private function download(Asset $asset): StreamedResponse
     {
-        $bucketConfig = config("photova.storage.buckets.{$asset->bucket}");
-        $disk = $bucketConfig['disk'] ?? 'local';
-        $storagePath = ($bucketConfig['path'] ?? 'assets') . '/' . $asset->storage_key;
+        $content = $this->storage->retrieve($asset);
+        
+        if ($content === null) {
+            abort(404, 'File not found');
+        }
 
-        return Storage::disk($disk)->download($storagePath, $asset->filename, [
+        return response()->streamDownload(function () use ($content) {
+            echo $content;
+        }, $asset->filename, [
             'Content-Type' => $asset->mime_type,
+            'Content-Length' => strlen($content),
+        ]);
+    }
+
+    private function serve(Asset $asset): Response
+    {
+        $content = $this->storage->retrieve($asset);
+        
+        if ($content === null) {
+            abort(404, 'File not found');
+        }
+
+        return response($content, 200, [
+            'Content-Type' => $asset->mime_type,
+            'Content-Length' => strlen($content),
+            'Cache-Control' => 'private, max-age=3600',
         ]);
     }
 
@@ -289,7 +446,7 @@ class AssetController extends Controller
 
         return [
             'id' => $asset->id,
-            'bucket' => $asset->bucket,
+            'storageBucketId' => $asset->storage_bucket_id,
             'folderId' => $asset->folder_id,
             'filename' => $asset->filename,
             'mimeType' => $asset->mime_type,

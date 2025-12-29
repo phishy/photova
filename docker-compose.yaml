@@ -23,6 +23,7 @@ services:
       REPLICATE_API_KEY: ${REPLICATE_API_KEY:-}
       FAL_API_KEY: ${FAL_API_KEY:-}
       REMOVEBG_API_KEY: ${REMOVEBG_API_KEY:-}
+      RCLONE_API_URL: http://rclone:5572
       SESSION_DRIVER: database
       CACHE_STORE: database
       QUEUE_CONNECTION: database
@@ -31,12 +32,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rclone:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  rclone:
+    image: rclone/rclone:latest
+    container_name: photova-rclone
+    restart: unless-stopped
+    command: rcd --rc-no-auth --rc-addr=:5572
+    ports:
+      - "5572:5572"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5572/core/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   postgres:
     image: postgres:16-alpine
@@ -56,6 +73,29 @@ services:
       timeout: 5s
       retries: 5
 
+  minio:
+    image: minio/minio:latest
+    container_name: photova-minio
+    restart: unless-stopped
+    profiles:
+      - minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-photova}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-photova123}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
 volumes:
   postgres_data:
   api_storage:
+  minio_data:

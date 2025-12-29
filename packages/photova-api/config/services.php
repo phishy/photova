@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'rclone' => [
+        'url' => env('RCLONE_API_URL', 'http://rclone:5572'),
+    ],
+
 ];
