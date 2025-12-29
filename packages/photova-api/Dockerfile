@@ -14,7 +14,7 @@ RUN npm run build
 
 
 # Stage 2: PHP application
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 RUN apk add --no-cache \
     git \
