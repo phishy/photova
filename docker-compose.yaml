@@ -47,8 +47,8 @@ services:
     restart: unless-stopped
     command: rcd --rc-no-auth --rc-addr=:5572
     ports:
-      # - "5572:5572"
-      - "5572"
+      - "5572:5572"
+      # - "5572"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:5572/core/version || exit 1"]
       interval: 10s
