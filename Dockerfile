@@ -1,3 +1,20 @@
+FROM node:20-alpine AS frontend
+
+WORKDIR /build
+
+COPY packages/photova/package*.json ./photova/
+WORKDIR /build/photova
+RUN npm install
+
+COPY packages/photova/ ./
+RUN npm run build
+
+WORKDIR /build/api
+COPY packages/photova-api/package*.json ./
+RUN npm install
+COPY packages/photova-api/ ./
+RUN npm run build
+
 FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
@@ -11,9 +28,7 @@ RUN apk add --no-cache \
     unzip \
     postgresql-dev \
     nginx \
-    supervisor \
-    nodejs \
-    npm
+    supervisor
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
@@ -27,19 +42,14 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+WORKDIR /var/www/html
+
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-COPY packages/photova/ /var/www/photova/
-
-WORKDIR /var/www/photova
-RUN npm ci && npm run build
-
-WORKDIR /var/www/html
 COPY packages/photova-api/ .
+COPY --from=frontend /build/api/public/build/ ./public/build/
 
 RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
-
-RUN npm ci && npm run build
 
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
