@@ -153,14 +153,16 @@
             </div>
 
             <div class="bg-[#0a0a0a] rounded-2xl border border-white/[0.08] overflow-hidden mb-12">
-                <div class="flex border-b border-white/[0.08] px-5">
-                    <button @click="codeTab = 'js'" :class="codeTab === 'js' ? 'text-white border-blue-500' : 'text-gray-500 border-transparent'" class="px-5 py-4 text-sm font-medium border-b-2 -mb-px transition">JavaScript</button>
-                    <button @click="codeTab = 'curl'" :class="codeTab === 'curl' ? 'text-white border-blue-500' : 'text-gray-500 border-transparent'" class="px-5 py-4 text-sm font-medium border-b-2 -mb-px transition">cURL</button>
-                </div>
-                <div class="p-6 relative">
-                    <button @click="copyCode" class="absolute top-4 right-4 px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-gray-400 hover:bg-white/10 hover:text-white transition flex items-center gap-2">
+                <div class="flex justify-between items-center border-b border-white/[0.08] px-5">
+                    <div class="flex">
+                        <button @click="codeTab = 'js'" :class="codeTab === 'js' ? 'text-white border-blue-500' : 'text-gray-500 border-transparent'" class="px-5 py-4 text-sm font-medium border-b-2 -mb-px transition">JavaScript</button>
+                        <button @click="codeTab = 'curl'" :class="codeTab === 'curl' ? 'text-white border-blue-500' : 'text-gray-500 border-transparent'" class="px-5 py-4 text-sm font-medium border-b-2 -mb-px transition">cURL</button>
+                    </div>
+                    <button @click="copyCode" class="px-3 py-1.5 bg-white/5 border border-white/10 rounded-md text-xs text-gray-400 hover:bg-white/10 hover:text-white transition flex items-center gap-2">
                         <span x-text="copied ? '✓ Copied!' : 'Copy'"></span>
                     </button>
+                </div>
+                <div class="p-6">
                     <pre class="text-sm leading-relaxed overflow-auto font-mono text-gray-300"><code x-html="codeTab === 'js' ? jsCode : curlCode"></code></pre>
                 </div>
             </div>
