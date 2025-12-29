@@ -3,11 +3,12 @@ FROM node:20-alpine AS frontend
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+COPY package.json ./
+RUN npm install
 
 COPY vite.config.js postcss.config.js ./
 COPY resources/ ./resources/
+RUN mkdir -p public
 
 RUN npm run build
 
