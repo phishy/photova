@@ -234,11 +234,11 @@
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm text-gray-400 mb-2">Email</label>
-                        <input type="email" x-model="email" placeholder="you@example.com" required class="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-blue-500/50 transition">
+                        <input type="email" x-model="email" placeholder="you@example.com" required @keydown.enter="handleSubmit" class="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-blue-500/50 transition">
                     </div>
                     <div class="mb-6">
                         <label class="block text-sm text-gray-400 mb-2">Password</label>
-                        <input type="password" x-model="password" :placeholder="isLogin ? 'Enter password' : 'Create password'" required class="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-blue-500/50 transition">
+                        <input type="password" x-model="password" :placeholder="isLogin ? 'Enter password' : 'Create password'" required @keydown.enter="handleSubmit" class="w-full px-4 py-3 bg-[#111] border border-white/10 rounded-lg text-white text-sm outline-none focus:border-blue-500/50 transition">
                     </div>
                     <button type="submit" :disabled="loading" class="w-full py-3 px-6 bg-white text-black rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50" x-text="loading ? 'Loading...' : (isLogin ? 'Sign in' : 'Create account')"></button>
                 </form>

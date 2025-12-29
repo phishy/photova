@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 test('user can signup with valid credentials', function () {
     $response = $this->postJson('/api/auth/signup', [
@@ -115,4 +116,54 @@ test('unauthenticated user cannot access profile', function () {
     $response = $this->getJson('/api/auth/me');
 
     $response->assertUnauthorized();
+});
+
+test('authenticated user can update their password', function () {
+    $user = User::factory()->create([
+        'password' => bcrypt('oldpassword123'),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->patchJson('/api/auth/me/password', [
+            'current_password' => 'oldpassword123',
+            'password' => 'newpassword456',
+            'password_confirmation' => 'newpassword456',
+        ]);
+
+    $response->assertOk()
+        ->assertJson(['message' => 'Password updated successfully']);
+
+    $this->assertTrue(Hash::check('newpassword456', $user->fresh()->password));
+});
+
+test('password update fails with wrong current password', function () {
+    $user = User::factory()->create([
+        'password' => bcrypt('oldpassword123'),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->patchJson('/api/auth/me/password', [
+            'current_password' => 'wrongpassword',
+            'password' => 'newpassword456',
+            'password_confirmation' => 'newpassword456',
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['current_password']);
+});
+
+test('password update fails when passwords do not match', function () {
+    $user = User::factory()->create([
+        'password' => bcrypt('oldpassword123'),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->patchJson('/api/auth/me/password', [
+            'current_password' => 'oldpassword123',
+            'password' => 'newpassword456',
+            'password_confirmation' => 'differentpassword',
+        ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['password']);
 });

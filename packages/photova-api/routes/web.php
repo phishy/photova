@@ -15,6 +15,7 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/usage', fn() => view('dashboard.usage'))->name('dashboard.usage');
     Route::get('/assets', fn() => view('dashboard.assets'))->name('dashboard.assets');
     Route::get('/playground', fn() => view('dashboard.playground'))->name('dashboard.playground');
+    Route::get('/settings', fn() => view('dashboard.settings'))->name('dashboard.settings');
     
     // Admin routes (role check handled client-side via Alpine.js)
     Route::prefix('admin')->group(function () {
