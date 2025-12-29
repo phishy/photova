@@ -11,7 +11,9 @@ RUN apk add --no-cache \
     unzip \
     postgresql-dev \
     nginx \
-    supervisor
+    supervisor \
+    nodejs \
+    npm
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
@@ -32,6 +34,8 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY packages/photova-api/ .
 
 RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs
+
+RUN npm ci && npm run build
 
 RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p storage/logs \
