@@ -12,11 +12,11 @@ Route::get('/og-preview', fn() => view('og.image'))->name('og.preview');
 
 // Dashboard routes (auth handled client-side via Alpine.js)
 Route::prefix('dashboard')->group(function () {
-    Route::get('/', fn() => view('dashboard.index'))->name('dashboard');
+    Route::get('/', fn() => view('dashboard.assets'))->name('dashboard');
     Route::get('/keys', fn() => view('dashboard.keys'))->name('dashboard.keys');
     Route::get('/usage', fn() => view('dashboard.usage'))->name('dashboard.usage');
     Route::get('/storage', fn() => view('dashboard.storage'))->name('dashboard.storage');
-    Route::get('/assets', fn() => view('dashboard.assets'))->name('dashboard.assets');
+    Route::get('/assets', fn() => redirect()->route('dashboard'));
     Route::get('/playground', fn() => view('dashboard.playground'))->name('dashboard.playground');
     Route::get('/settings', fn() => view('dashboard.settings'))->name('dashboard.settings');
     

@@ -167,7 +167,7 @@
 
             async loadKeys() {
                 const ref = document.referrer;
-                if (ref && ref.includes('/dashboard/assets')) {
+                if (ref && ref.includes('/dashboard')) {
                     this.referrerUrl = ref;
                 }
 
@@ -300,7 +300,7 @@
             },
 
             goBackToFiles() {
-                window.location.href = this.referrerUrl || '/dashboard/assets';
+                window.location.href = this.referrerUrl || '/dashboard';
             },
 
             async updateExisting(base64, metadata) {
