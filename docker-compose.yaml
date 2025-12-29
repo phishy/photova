@@ -47,7 +47,8 @@ services:
     restart: unless-stopped
     command: rcd --rc-no-auth --rc-addr=:5572
     ports:
-      - "5572:5572"
+      # - "5572:5572"
+      - "5572"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:5572/core/version"]
       interval: 10s
@@ -81,8 +82,10 @@ services:
       - minio
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000"
+      - "9001"
+      # - "9000:9000"
+      # - "9001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-photova}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-photova123}
