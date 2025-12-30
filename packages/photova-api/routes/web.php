@@ -18,8 +18,9 @@ Route::prefix('dashboard')->group(function () {
     Route::get('/', fn() => view('dashboard.assets'))->name('dashboard');
     Route::get('/insights', fn() => view('dashboard.insights'))->name('dashboard.insights');
     Route::get('/map', fn() => view('dashboard.map'))->name('dashboard.map');
-    Route::get('/keys', fn() => view('dashboard.keys'))->name('dashboard.keys');
+    Route::get('/keys', fn() => redirect()->route('dashboard.settings', ['tab' => 'keys']))->name('dashboard.keys');
     Route::get('/usage', fn() => view('dashboard.usage'))->name('dashboard.usage');
+    Route::get('/shares', fn() => view('dashboard.shares'))->name('dashboard.shares');
     Route::get('/storage', fn() => view('dashboard.storage'))->name('dashboard.storage');
     Route::get('/assets', fn() => redirect()->route('dashboard'));
     Route::get('/playground', fn() => view('dashboard.playground'))->name('dashboard.playground');

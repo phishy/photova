@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Asset extends Model
 {
@@ -28,6 +29,9 @@ class Asset extends Model
         return [
             'metadata' => 'array',
             'size' => 'integer',
+            'view_count' => 'integer',
+            'download_count' => 'integer',
+            'last_viewed_at' => 'datetime',
         ];
     }
 
@@ -59,5 +63,28 @@ class Asset extends Model
     public function isOnUserStorage(): bool
     {
         return $this->storage_bucket_id !== null;
+    }
+
+    public function analytics(): HasMany
+    {
+        return $this->hasMany(AssetAnalytic::class);
+    }
+
+    public function getAnalyticsSummary(int $days = 30): array
+    {
+        $since = now()->subDays($days);
+
+        $analytics = $this->analytics()
+            ->where('created_at', '>=', $since)
+            ->selectRaw('event_type, COUNT(*) as count')
+            ->groupBy('event_type')
+            ->pluck('count', 'event_type')
+            ->toArray();
+
+        return [
+            'views' => $analytics[AssetAnalytic::EVENT_VIEW] ?? 0,
+            'downloads' => $analytics[AssetAnalytic::EVENT_DOWNLOAD] ?? 0,
+            'total' => array_sum($analytics),
+        ];
     }
 }

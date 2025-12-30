@@ -2,6 +2,7 @@
 
 use App\Models\Asset;
 use App\Models\Share;
+use App\Models\ShareAnalytic;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 
@@ -309,5 +310,106 @@ describe('zip downloads', function () {
         $response = $this->get("/api/s/{$share->slug}/zip");
 
         $response->assertForbidden();
+    });
+});
+
+describe('share analytics', function () {
+    it('records view analytics', function () {
+        $user = User::factory()->create();
+        $asset = Asset::factory()->for($user)->create();
+        $share = Share::factory()->for($user)->create([
+            'asset_ids' => [$asset->id],
+        ]);
+
+        $this->getJson("/api/s/{$share->slug}");
+
+        $this->assertDatabaseHas('share_analytics', [
+            'share_id' => $share->id,
+            'event_type' => ShareAnalytic::EVENT_VIEW,
+        ]);
+    });
+
+    it('records download analytics', function () {
+        $user = User::factory()->create();
+        Storage::disk('assets')->put('test.png', file_get_contents(base_path('tests/fixtures/test.png')));
+        $asset = Asset::factory()->for($user)->create([
+            'storage_key' => 'test.png',
+            'mime_type' => 'image/png',
+        ]);
+        $share = Share::factory()->for($user)->create([
+            'asset_ids' => [$asset->id],
+            'allow_download' => true,
+        ]);
+
+        $this->get("/api/s/{$share->slug}/assets/{$asset->id}/download");
+
+        $this->assertDatabaseHas('share_analytics', [
+            'share_id' => $share->id,
+            'event_type' => ShareAnalytic::EVENT_DOWNLOAD,
+            'asset_id' => $asset->id,
+        ]);
+    });
+
+    it('records zip download analytics', function () {
+        $user = User::factory()->create();
+        Storage::disk('assets')->put('test.png', file_get_contents(base_path('tests/fixtures/test.png')));
+        $asset = Asset::factory()->for($user)->create([
+            'storage_key' => 'test.png',
+            'mime_type' => 'image/png',
+        ]);
+        $share = Share::factory()->for($user)->create([
+            'asset_ids' => [$asset->id],
+            'allow_zip' => true,
+        ]);
+
+        $this->get("/api/s/{$share->slug}/zip");
+
+        $this->assertDatabaseHas('share_analytics', [
+            'share_id' => $share->id,
+            'event_type' => ShareAnalytic::EVENT_ZIP_DOWNLOAD,
+        ]);
+    });
+
+    it('owner can view share analytics', function () {
+        $user = User::factory()->create();
+        $share = Share::factory()->for($user)->create(['asset_ids' => []]);
+
+        ShareAnalytic::create([
+            'share_id' => $share->id,
+            'event_type' => ShareAnalytic::EVENT_VIEW,
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $response = $this->actingAs($user)->getJson("/api/shares/{$share->id}/analytics");
+
+        $response->assertOk()
+            ->assertJsonPath('summary.views', 1)
+            ->assertJsonPath('summary.downloads', 0)
+            ->assertJsonCount(1, 'events');
+    });
+
+    it('cannot view another users share analytics', function () {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $share = Share::factory()->for($otherUser)->create(['asset_ids' => []]);
+
+        $response = $this->actingAs($user)->getJson("/api/shares/{$share->id}/analytics");
+
+        $response->assertNotFound();
+    });
+
+    it('includes analytics summary in share list', function () {
+        $user = User::factory()->create();
+        $share = Share::factory()->for($user)->create(['asset_ids' => []]);
+
+        ShareAnalytic::create([
+            'share_id' => $share->id,
+            'event_type' => ShareAnalytic::EVENT_VIEW,
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/api/shares');
+
+        $response->assertOk()
+            ->assertJsonPath('shares.0.analytics.views', 1);
     });
 });

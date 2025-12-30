@@ -70,11 +70,12 @@ function createThumbnailIcon(assetId) {
     });
 }
 
-function FitBounds({ bounds }) {
+function FitBounds({ bounds, onBoundsReady }) {
     const map = useMap();
+    const initialFitDone = React.useRef(false);
     
     useEffect(() => {
-        if (!bounds) return;
+        if (!bounds || initialFitDone.current) return;
         
         const isSinglePoint = bounds.north === bounds.south && bounds.east === bounds.west;
         
@@ -87,7 +88,31 @@ function FitBounds({ bounds }) {
             );
             map.fitBounds(leafletBounds, { padding: [50, 50], maxZoom: 16 });
         }
-    }, [bounds, map]);
+        initialFitDone.current = true;
+        
+        setTimeout(() => onBoundsReady?.(), 100);
+    }, [bounds, map, onBoundsReady]);
+    
+    return null;
+}
+
+function MapEvents({ onMoveEnd }) {
+    const map = useMap();
+    
+    useEffect(() => {
+        const handleMoveEnd = () => {
+            const bounds = map.getBounds();
+            onMoveEnd({
+                north: bounds.getNorth(),
+                south: bounds.getSouth(),
+                east: bounds.getEast(),
+                west: bounds.getWest(),
+            });
+        };
+        
+        map.on('moveend', handleMoveEnd);
+        return () => map.off('moveend', handleMoveEnd);
+    }, [map, onMoveEnd]);
     
     return null;
 }
@@ -116,26 +141,70 @@ function AssetPopup({ asset }) {
 function PhotoMap() {
     const [loading, setLoading] = useState(true);
     const [assets, setAssets] = useState([]);
-    const [bounds, setBounds] = useState(null);
+    const [initialBounds, setInitialBounds] = useState(null);
     const [count, setCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
+    const [mapReady, setMapReady] = useState(false);
+    const fetchController = React.useRef(null);
 
     useEffect(() => {
-        async function loadGeoAssets() {
+        async function loadInitialBounds() {
             try {
                 const res = await window.apiFetch('/api/assets/geo');
                 if (res.ok) {
                     const data = await res.json();
-                    setAssets(data.assets || []);
-                    setBounds(data.bounds);
-                    setCount(data.count || 0);
+                    setInitialBounds(data.bounds);
+                    setTotalCount(data.count || 0);
+                    if (!data.bounds) {
+                        setAssets([]);
+                        setCount(0);
+                    }
                 }
             } catch (e) {
                 console.error('Failed to load geo assets:', e);
             }
             setLoading(false);
         }
-        loadGeoAssets();
+        loadInitialBounds();
     }, []);
+
+    const fetchAssetsInBounds = React.useCallback(async (bounds) => {
+        if (fetchController.current) {
+            fetchController.current.abort();
+        }
+        fetchController.current = new AbortController();
+
+        try {
+            const params = new URLSearchParams({
+                north: bounds.north,
+                south: bounds.south,
+                east: bounds.east,
+                west: bounds.west,
+            });
+            const res = await window.apiFetch(`/api/assets/geo?${params}`, {
+                signal: fetchController.current.signal,
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setAssets(data.assets || []);
+                setCount(data.count || 0);
+            }
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                console.error('Failed to load assets in bounds:', e);
+            }
+        }
+    }, []);
+
+    const handleBoundsReady = React.useCallback(() => {
+        setMapReady(true);
+    }, []);
+
+    const handleMoveEnd = React.useCallback((bounds) => {
+        if (mapReady) {
+            fetchAssetsInBounds(bounds);
+        }
+    }, [mapReady, fetchAssetsInBounds]);
 
     if (loading) {
         return (
@@ -148,7 +217,7 @@ function PhotoMap() {
         );
     }
 
-    if (count === 0) {
+    if (totalCount === 0) {
         return (
             <div style={{ height: 600 }} className="flex flex-col items-center justify-center text-center rounded-lg border border-[#30363d]">
                 <div className="w-16 h-16 rounded-full bg-[#21262d] flex items-center justify-center mb-4">
@@ -170,7 +239,10 @@ function PhotoMap() {
             <style>{mapStyles}</style>
             <div className="flex items-center gap-3 mb-4">
                 <span className="px-2 py-0.5 bg-[#21262d] border border-[#30363d] rounded-full text-xs text-[#8b949e]">
-                    {count} geotagged photos
+                    {count} photo{count !== 1 ? 's' : ''} in view
+                </span>
+                <span className="text-xs text-[#8b949e]">
+                    ({totalCount} total geotagged)
                 </span>
             </div>
             <div style={{ height: 600 }} className="rounded-lg border border-[#30363d] overflow-hidden">
@@ -186,7 +258,8 @@ function PhotoMap() {
                         subdomains="abcd"
                         maxZoom={19}
                     />
-                    <FitBounds bounds={bounds} />
+                    <FitBounds bounds={initialBounds} onBoundsReady={handleBoundsReady} />
+                    <MapEvents onMoveEnd={handleMoveEnd} />
                     <MarkerClusterGroup
                         chunkedLoading
                         showCoverageOnHover={false}

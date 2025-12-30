@@ -1212,6 +1212,8 @@
                                     <input
                                         type="password"
                                         x-model="shareForm.password"
+                                        x-init="$el.focus()"
+                                        @keydown.enter="shareForm.password && createShare()"
                                         placeholder="Enter password"
                                         class="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm focus:outline-none focus:border-[#58a6ff]"
                                     >
@@ -1266,19 +1268,42 @@
                             </button>
                         </div>
 
-                        <div class="flex gap-2 mb-4">
-                            <input
-                                type="text"
-                                :value="shareResult.url"
-                                readonly
-                                class="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm"
+                        <div class="mb-4">
+                            <div class="flex gap-2">
+                                <input
+                                    type="text"
+                                    :value="shareResult.url"
+                                    readonly
+                                    class="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm"
+                                >
+                                <button
+                                    @click="copyShareLink()"
+                                    :class="copiedLink 
+                                        ? 'bg-green-600 border-green-600 text-white' 
+                                        : 'bg-[#21262d] hover:bg-[#30363d] border-[#30363d] text-[#c9d1d9]'"
+                                    class="px-4 py-2 border rounded-md text-sm transition-all duration-200 flex items-center gap-2"
+                                >
+                                    <svg x-show="copiedLink" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span x-text="copiedLink ? 'Copied!' : 'Copy'"></span>
+                                </button>
+                            </div>
+                            <div 
+                                x-show="copiedLink" 
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                x-transition:leave="transition ease-in duration-150"
+                                x-transition:leave-start="opacity-100 translate-y-0"
+                                x-transition:leave-end="opacity-0 -translate-y-1"
+                                class="mt-2 px-3 py-2 bg-green-600/20 border border-green-600/30 rounded-md flex items-center gap-2"
                             >
-                            <button
-                                @click="copyShareLink()"
-                                class="px-4 py-2 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm transition-colors"
-                            >
-                                <span x-text="copiedLink ? 'Copied!' : 'Copy'"></span>
-                            </button>
+                                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span class="text-sm text-green-500">Link copied to clipboard!</span>
+                            </div>
                         </div>
 
                         <div class="text-sm text-[#8b949e] space-y-1 mb-4">

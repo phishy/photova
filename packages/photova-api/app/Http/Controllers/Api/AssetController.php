@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\AnalyzeAsset;
 use App\Models\Asset;
+use App\Models\AssetAnalytic;
 use App\Models\StorageBucket;
 use App\Services\ExifService;
 use App\Services\StorageService;
@@ -91,6 +92,33 @@ class AssetController extends Controller
                 'takenAt' => $asset->metadata['exif']['datetime']['original'] ?? null,
                 'camera' => $asset->metadata['exif']['camera']['model'] ?? null,
             ]);
+
+        $north = $request->query('north');
+        $south = $request->query('south');
+        $east = $request->query('east');
+        $west = $request->query('west');
+
+        if ($north !== null && $south !== null && $east !== null && $west !== null) {
+            $north = (float) $north;
+            $south = (float) $south;
+            $east = (float) $east;
+            $west = (float) $west;
+
+            $assets = $assets->filter(function ($asset) use ($north, $south, $east, $west) {
+                $lat = $asset['lat'];
+                $lng = $asset['lng'];
+
+                if ($lat < $south || $lat > $north) {
+                    return false;
+                }
+
+                if ($west <= $east) {
+                    return $lng >= $west && $lng <= $east;
+                } else {
+                    return $lng >= $west || $lng <= $east;
+                }
+            })->values();
+        }
 
         $bounds = null;
         if ($assets->isNotEmpty()) {
@@ -640,6 +668,9 @@ class AssetController extends Controller
             'size' => $asset->size,
             'metadata' => $asset->metadata,
             'tags' => $tags,
+            'viewCount' => $asset->view_count ?? 0,
+            'downloadCount' => $asset->download_count ?? 0,
+            'lastViewedAt' => $asset->last_viewed_at?->toIso8601String(),
             'created' => $asset->created_at->toIso8601String(),
             'updated' => $asset->updated_at->toIso8601String(),
         ];
@@ -683,13 +714,132 @@ class AssetController extends Controller
 
     private function shouldAutoAnalyze(Asset $asset): bool
     {
-        // System storage (no bucket) always auto-analyzes
         if ($asset->storage_bucket_id === null) {
             return true;
         }
 
-        // User bucket - check the bucket's auto_analyze setting
         $bucket = $asset->storageBucket;
         return $bucket?->auto_analyze ?? true;
+    }
+
+    public function analytics(Request $request, Asset $asset): JsonResponse
+    {
+        $this->authorizeAsset($request, $asset);
+
+        $days = (int) $request->query('days', 30);
+        $days = max(1, min(365, $days));
+        $since = now()->subDays($days);
+
+        $events = $asset->analytics()
+            ->where('created_at', '>=', $since)
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get()
+            ->map(fn ($event) => [
+                'id' => $event->id,
+                'eventType' => $event->event_type,
+                'source' => $event->source,
+                'shareId' => $event->share_id,
+                'ipAddress' => $event->ip_address,
+                'country' => $event->country,
+                'city' => $event->city,
+                'timestamp' => $event->created_at->toIso8601String(),
+            ]);
+
+        $summary = $asset->analytics()
+            ->where('created_at', '>=', $since)
+            ->selectRaw('event_type, source, COUNT(*) as count')
+            ->groupBy('event_type', 'source')
+            ->get();
+
+        $byType = [];
+        $bySource = [];
+        foreach ($summary as $row) {
+            $byType[$row->event_type] = ($byType[$row->event_type] ?? 0) + $row->count;
+            $bySource[$row->source] = ($bySource[$row->source] ?? 0) + $row->count;
+        }
+
+        $timeseries = $asset->analytics()
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE(created_at) as date, event_type, COUNT(*) as count")
+            ->groupBy('date', 'event_type')
+            ->orderBy('date')
+            ->get()
+            ->groupBy('date')
+            ->map(fn ($group) => [
+                'date' => $group->first()->date,
+                'views' => $group->firstWhere('event_type', AssetAnalytic::EVENT_VIEW)?->count ?? 0,
+                'downloads' => $group->firstWhere('event_type', AssetAnalytic::EVENT_DOWNLOAD)?->count ?? 0,
+            ])
+            ->values();
+
+        return response()->json([
+            'asset' => [
+                'id' => $asset->id,
+                'filename' => $asset->filename,
+                'viewCount' => $asset->view_count,
+                'downloadCount' => $asset->download_count,
+                'lastViewedAt' => $asset->last_viewed_at?->toIso8601String(),
+            ],
+            'summary' => [
+                'views' => $byType[AssetAnalytic::EVENT_VIEW] ?? 0,
+                'downloads' => $byType[AssetAnalytic::EVENT_DOWNLOAD] ?? 0,
+                'total' => array_sum($byType),
+            ],
+            'bySource' => $bySource,
+            'timeseries' => $timeseries,
+            'events' => $events,
+        ]);
+    }
+
+    public function analyticsAggregate(Request $request): JsonResponse
+    {
+        $days = (int) $request->query('days', 30);
+        $days = max(1, min(365, $days));
+        $since = now()->subDays($days);
+
+        $assetIds = $request->user()->assets()->pluck('id');
+
+        $summary = AssetAnalytic::whereIn('asset_id', $assetIds)
+            ->where('created_at', '>=', $since)
+            ->selectRaw('event_type, COUNT(*) as count')
+            ->groupBy('event_type')
+            ->pluck('count', 'event_type')
+            ->toArray();
+
+        $timeseries = AssetAnalytic::whereIn('asset_id', $assetIds)
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE(created_at) as date, event_type, COUNT(*) as count")
+            ->groupBy('date', 'event_type')
+            ->orderBy('date')
+            ->get()
+            ->groupBy('date')
+            ->map(fn ($group) => [
+                'date' => $group->first()->date,
+                'views' => $group->firstWhere('event_type', AssetAnalytic::EVENT_VIEW)?->count ?? 0,
+                'downloads' => $group->firstWhere('event_type', AssetAnalytic::EVENT_DOWNLOAD)?->count ?? 0,
+            ])
+            ->values();
+
+        $topAssets = $request->user()->assets()
+            ->orderByDesc('view_count')
+            ->limit(10)
+            ->get()
+            ->map(fn ($asset) => [
+                'id' => $asset->id,
+                'filename' => $asset->filename,
+                'viewCount' => $asset->view_count,
+                'downloadCount' => $asset->download_count,
+            ]);
+
+        return response()->json([
+            'summary' => [
+                'views' => $summary[AssetAnalytic::EVENT_VIEW] ?? 0,
+                'downloads' => $summary[AssetAnalytic::EVENT_DOWNLOAD] ?? 0,
+                'total' => array_sum($summary),
+            ],
+            'timeseries' => $timeseries,
+            'topAssets' => $topAssets,
+        ]);
     }
 }

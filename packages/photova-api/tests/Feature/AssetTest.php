@@ -420,3 +420,46 @@ test('asset response includes location when EXIF has GPS data', function () {
         ->assertJsonPath('asset.location.lat', 37.7749)
         ->assertJsonPath('asset.location.lng', -122.4194);
 });
+
+test('geo endpoint filters assets by bounds', function () {
+    $user = User::factory()->create();
+    
+    // San Francisco (should be in bounds)
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'filename' => 'sf.jpg',
+        'metadata' => [
+            'exif' => ['location' => ['lat' => 37.7749, 'lng' => -122.4194]],
+        ],
+    ]);
+    
+    // New York (should be out of bounds)
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'filename' => 'nyc.jpg',
+        'metadata' => [
+            'exif' => ['location' => ['lat' => 40.7128, 'lng' => -74.0060]],
+        ],
+    ]);
+    
+    // Los Angeles (should be in bounds)
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'filename' => 'la.jpg',
+        'metadata' => [
+            'exif' => ['location' => ['lat' => 34.0522, 'lng' => -118.2437]],
+        ],
+    ]);
+
+    // Query for West Coast bounding box (should include SF and LA, exclude NYC)
+    $response = $this->actingAs($user)
+        ->getJson('/api/assets/geo?north=40&south=33&west=-125&east=-115');
+
+    $response->assertOk()
+        ->assertJsonCount(2, 'assets');
+    
+    $filenames = collect($response->json('assets'))->pluck('filename')->toArray();
+    expect($filenames)->toContain('sf.jpg')
+        ->and($filenames)->toContain('la.jpg')
+        ->and($filenames)->not->toContain('nyc.jpg');
+});

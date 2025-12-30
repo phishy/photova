@@ -19,13 +19,8 @@ test('operations endpoint lists available operations', function () {
         ]);
 });
 
-test('openapi endpoint returns valid spec', function () {
-    $response = $this->getJson('/api/openapi.json');
+test('openapi endpoint redirects to scramble docs', function () {
+    $response = $this->get('/api/openapi.json');
 
-    $response->assertOk()
-        ->assertJsonStructure([
-            'openapi',
-            'info' => ['title', 'version'],
-            'paths',
-        ]);
+    $response->assertRedirect('/docs/api.json');
 });

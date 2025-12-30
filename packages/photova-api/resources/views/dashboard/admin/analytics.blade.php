@@ -70,6 +70,37 @@
         </div>
     </div>
 
+    <!-- Platform Stats Row -->
+    <div class="grid grid-cols-2 sm:grid-cols-6 gap-4 mb-6">
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 relative overflow-hidden">
+            <div class="text-xs text-[#8b949e] mb-1">Users</div>
+            <div class="text-xl font-semibold text-[#c9d1d9]" x-text="(platform.users?.total || 0).toLocaleString()"></div>
+            <div class="text-xs text-[#3fb950] mt-1" x-show="platform.users?.new > 0">+<span x-text="platform.users?.new"></span> new</div>
+        </div>
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 relative overflow-hidden">
+            <div class="text-xs text-[#8b949e] mb-1">Assets</div>
+            <div class="text-xl font-semibold text-[#c9d1d9]" x-text="(platform.assets?.total || 0).toLocaleString()"></div>
+            <div class="text-xs text-[#8b949e] mt-1" x-text="formatBytes(platform.assets?.totalSize || 0)"></div>
+        </div>
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 relative overflow-hidden">
+            <div class="text-xs text-[#8b949e] mb-1">Shares</div>
+            <div class="text-xl font-semibold text-[#c9d1d9]" x-text="(platform.shares?.total || 0).toLocaleString()"></div>
+            <div class="text-xs text-[#3fb950] mt-1"><span x-text="platform.shares?.active || 0"></span> active</div>
+        </div>
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 relative overflow-hidden">
+            <div class="text-xs text-[#8b949e] mb-1">Share Views</div>
+            <div class="text-xl font-semibold text-[#58a6ff]" x-text="(platform.analytics?.shareViews || 0).toLocaleString()"></div>
+        </div>
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 relative overflow-hidden">
+            <div class="text-xs text-[#8b949e] mb-1">Downloads</div>
+            <div class="text-xl font-semibold text-[#3fb950]" x-text="(platform.analytics?.shareDownloads || 0).toLocaleString()"></div>
+        </div>
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 relative overflow-hidden">
+            <div class="text-xs text-[#8b949e] mb-1">Asset Views</div>
+            <div class="text-xl font-semibold text-[#a371f7]" x-text="(platform.analytics?.assetViews || 0).toLocaleString()"></div>
+        </div>
+    </div>
+
     <!-- Operation Profitability Table -->
     <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
         <div class="p-4 border-b border-[#21262d]">
@@ -113,6 +144,57 @@
             <div class="p-8 text-center text-[#8b949e] text-sm">No operations yet</div>
         </template>
     </div>
+
+    <!-- Top Shares & Assets -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <!-- Top Shares -->
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
+            <div class="p-4 border-b border-[#21262d]">
+                <h2 class="text-sm font-medium text-[#c9d1d9]">Top Shares by Views</h2>
+            </div>
+            <div class="divide-y divide-[#21262d]">
+                <template x-for="share in topShares.slice(0, 5)" :key="share.id">
+                    <div class="p-3 flex items-center justify-between">
+                        <div>
+                            <div class="text-[13px] text-[#c9d1d9]" x-text="share.name || share.slug"></div>
+                            <div class="text-xs text-[#8b949e]" x-text="share.user?.name || 'Unknown'"></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-medium text-[#58a6ff]" x-text="share.viewCount.toLocaleString()"></div>
+                            <div class="text-xs text-[#8b949e]">views</div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="topShares.length === 0">
+                    <div class="p-6 text-center text-[#8b949e] text-sm">No shares yet</div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Top Assets -->
+        <div class="bg-[#161b22] rounded-xl border border-[#30363d] overflow-hidden">
+            <div class="p-4 border-b border-[#21262d]">
+                <h2 class="text-sm font-medium text-[#c9d1d9]">Top Assets by Views</h2>
+            </div>
+            <div class="divide-y divide-[#21262d]">
+                <template x-for="asset in topAssets.slice(0, 5)" :key="asset.id">
+                    <div class="p-3 flex items-center justify-between">
+                        <div>
+                            <div class="text-[13px] text-[#c9d1d9] truncate max-w-[200px]" x-text="asset.filename"></div>
+                            <div class="text-xs text-[#8b949e]" x-text="asset.user?.name || 'Unknown'"></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-medium text-[#a371f7]" x-text="asset.viewCount.toLocaleString()"></div>
+                            <div class="text-xs text-[#8b949e]">views</div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="topAssets.length === 0">
+                    <div class="p-6 text-center text-[#8b949e] text-sm">No assets yet</div>
+                </template>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -124,6 +206,9 @@
             days: 30,
             usage: {},
             timeseries: [],
+            platform: {},
+            topShares: [],
+            topAssets: [],
             chart: null,
 
             opIcons: {
@@ -155,23 +240,31 @@
                 return Math.round(((stats.revenue - (stats.cost || 0)) / stats.revenue) * 100);
             },
 
+            formatBytes(bytes) {
+                if (!bytes) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            },
+
             async loadAnalytics() {
                 try {
-                    const [summaryRes, timeseriesRes] = await Promise.all([
+                    const [summaryRes, timeseriesRes, platformRes, topSharesRes, topAssetsRes] = await Promise.all([
                         window.apiFetch(`/api/usage/summary?days=${this.days}`),
-                        window.apiFetch(`/api/usage/timeseries?days=${this.days}`)
+                        window.apiFetch(`/api/usage/timeseries?days=${this.days}`),
+                        window.apiFetch(`/api/admin/dashboard?days=${this.days}`),
+                        window.apiFetch('/api/admin/top-shares'),
+                        window.apiFetch('/api/admin/top-assets')
                     ]);
 
-                    if (summaryRes.ok) {
-                        const data = await summaryRes.json();
-                        this.usage = data.summary || {};
-                    }
-
-                    if (timeseriesRes.ok) {
-                        const data = await timeseriesRes.json();
-                        this.timeseries = data.timeseries || [];
-                        this.renderChart();
-                    }
+                    this.usage = summaryRes.summary || {};
+                    this.timeseries = timeseriesRes.timeseries || [];
+                    this.platform = platformRes || {};
+                    this.topShares = topSharesRes.shares || [];
+                    this.topAssets = topAssetsRes.byViews || [];
+                    
+                    this.renderChart();
                 } catch (e) {
                     console.error('Failed to load analytics:', e);
                 }

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
+use App\Models\AssetAnalytic;
 use App\Models\Share;
+use App\Models\ShareAnalytic;
 use App\Services\StorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -144,9 +146,6 @@ class ShareController extends Controller
         return response()->json(['share' => $this->formatShare($share)]);
     }
 
-    /**
-     * Delete a share
-     */
     public function destroy(Request $request, Share $share): JsonResponse
     {
         if ($share->user_id !== $request->user()->id) {
@@ -158,9 +157,66 @@ class ShareController extends Controller
         return response()->json(['message' => 'Share deleted']);
     }
 
-    /**
-     * Public: Get share data for viewing
-     */
+    public function analytics(Request $request, Share $share): JsonResponse
+    {
+        if ($share->user_id !== $request->user()->id) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
+        $days = (int) $request->query('days', 30);
+        $days = max(1, min(365, $days));
+
+        $since = now()->subDays($days);
+
+        $events = $share->analytics()
+            ->where('created_at', '>=', $since)
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get()
+            ->map(fn ($event) => [
+                'id' => $event->id,
+                'eventType' => $event->event_type,
+                'assetId' => $event->asset_id,
+                'ipAddress' => $event->ip_address,
+                'country' => $event->country,
+                'city' => $event->city,
+                'timestamp' => $event->created_at->toIso8601String(),
+            ]);
+
+        $summary = $share->analytics()
+            ->where('created_at', '>=', $since)
+            ->selectRaw('event_type, COUNT(*) as count')
+            ->groupBy('event_type')
+            ->pluck('count', 'event_type')
+            ->toArray();
+
+        $timeseries = $share->analytics()
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE(created_at) as date, event_type, COUNT(*) as count")
+            ->groupBy('date', 'event_type')
+            ->orderBy('date')
+            ->get()
+            ->groupBy('date')
+            ->map(fn ($group) => [
+                'date' => $group->first()->date,
+                'views' => $group->firstWhere('event_type', ShareAnalytic::EVENT_VIEW)?->count ?? 0,
+                'downloads' => $group->firstWhere('event_type', ShareAnalytic::EVENT_DOWNLOAD)?->count ?? 0,
+                'zipDownloads' => $group->firstWhere('event_type', ShareAnalytic::EVENT_ZIP_DOWNLOAD)?->count ?? 0,
+            ])
+            ->values();
+
+        return response()->json([
+            'summary' => [
+                'views' => $summary[ShareAnalytic::EVENT_VIEW] ?? 0,
+                'downloads' => $summary[ShareAnalytic::EVENT_DOWNLOAD] ?? 0,
+                'zipDownloads' => $summary[ShareAnalytic::EVENT_ZIP_DOWNLOAD] ?? 0,
+                'total' => array_sum($summary),
+            ],
+            'timeseries' => $timeseries,
+            'events' => $events,
+        ]);
+    }
+
     public function publicShow(Request $request, string $slug): JsonResponse
     {
         $share = Share::where('slug', $slug)->first();
@@ -192,8 +248,14 @@ class ShareController extends Controller
             session(['share_password_' . $share->id => $password]);
         }
 
-        // Increment view count
+        // Log view analytics
         $share->incrementViewCount();
+        $share->logAnalytic(ShareAnalytic::EVENT_VIEW, $request);
+
+        // Log asset-level view analytics for each asset
+        foreach ($share->getAssets() as $asset) {
+            AssetAnalytic::log($asset, AssetAnalytic::EVENT_VIEW, AssetAnalytic::SOURCE_SHARE, $request, $share);
+        }
 
         // Get assets
         $assets = $share->getAssets()->map(fn ($asset) => [
@@ -309,6 +371,9 @@ class ShareController extends Controller
             abort(404);
         }
 
+        $share->logAnalytic(ShareAnalytic::EVENT_DOWNLOAD, $request, $assetId);
+        AssetAnalytic::log($asset, AssetAnalytic::EVENT_DOWNLOAD, AssetAnalytic::SOURCE_SHARE, $request, $share);
+
         return response()->streamDownload(function () use ($content) {
             echo $content;
         }, $asset->filename, [
@@ -317,9 +382,6 @@ class ShareController extends Controller
         ]);
     }
 
-    /**
-     * Public: Download all assets as ZIP
-     */
     public function publicZip(Request $request, string $slug): StreamedResponse
     {
         $share = Share::where('slug', $slug)->first();
@@ -345,14 +407,18 @@ class ShareController extends Controller
             abort(404, 'No assets found');
         }
 
+        $share->logAnalytic(ShareAnalytic::EVENT_ZIP_DOWNLOAD, $request);
+
+        // Log asset-level download analytics for each asset in the zip
+        foreach ($assets as $asset) {
+            AssetAnalytic::log($asset, AssetAnalytic::EVENT_DOWNLOAD, AssetAnalytic::SOURCE_SHARE, $request, $share);
+        }
+
         $zipName = ($share->name ?? 'shared-files') . '.zip';
 
         return $this->streamZip($assets, $zipName);
     }
 
-    /**
-     * Authenticated: Download selected assets as ZIP
-     */
     public function downloadZip(Request $request): StreamedResponse
     {
         $validated = $request->validate([
@@ -426,6 +492,7 @@ class ShareController extends Controller
             'allowDownload' => $share->allow_download,
             'allowZip' => $share->allow_zip,
             'viewCount' => $share->view_count,
+            'analytics' => $share->getAnalyticsSummary(),
             'created' => $share->created_at->toIso8601String(),
         ];
     }

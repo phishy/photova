@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class Share extends Model
@@ -95,5 +97,37 @@ class Share extends Model
     public function getUrl(): string
     {
         return url('/s/' . $this->slug);
+    }
+
+    public function analytics(): HasMany
+    {
+        return $this->hasMany(ShareAnalytic::class);
+    }
+
+    public function logAnalytic(string $eventType, Request $request, ?string $assetId = null): ShareAnalytic
+    {
+        return $this->analytics()->create([
+            'event_type' => $eventType,
+            'asset_id' => $assetId,
+            'ip_address' => $request->ip(),
+            'user_agent' => substr($request->userAgent() ?? '', 0, 512),
+            'referer' => substr($request->header('Referer') ?? '', 0, 512),
+        ]);
+    }
+
+    public function getAnalyticsSummary(): array
+    {
+        $analytics = $this->analytics()
+            ->selectRaw('event_type, COUNT(*) as count')
+            ->groupBy('event_type')
+            ->pluck('count', 'event_type')
+            ->toArray();
+
+        return [
+            'views' => $analytics[ShareAnalytic::EVENT_VIEW] ?? 0,
+            'downloads' => $analytics[ShareAnalytic::EVENT_DOWNLOAD] ?? 0,
+            'zipDownloads' => $analytics[ShareAnalytic::EVENT_ZIP_DOWNLOAD] ?? 0,
+            'total' => array_sum($analytics),
+        ];
     }
 }

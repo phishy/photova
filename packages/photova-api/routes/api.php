@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ApiKeyController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\AuthController;
@@ -59,10 +60,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/assets', [AssetController::class, 'index']);
     Route::get('/assets/insights', [AssetController::class, 'insights']);
     Route::get('/assets/geo', [AssetController::class, 'geo']);
+    Route::get('/assets/analytics', [AssetController::class, 'analyticsAggregate']);
     Route::post('/assets', [AssetController::class, 'store']);
     Route::post('/assets/move', [AssetController::class, 'move']);
     Route::get('/assets/{asset}', [AssetController::class, 'show']);
     Route::get('/assets/{asset}/thumb', [AssetController::class, 'thumbnail']);
+    Route::get('/assets/{asset}/analytics', [AssetController::class, 'analytics']);
     Route::patch('/assets/{asset}', [AssetController::class, 'update']);
     Route::post('/assets/{asset}/share', [AssetController::class, 'share']);
     Route::delete('/assets/{asset}', [AssetController::class, 'destroy']);
@@ -83,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/shares', [ShareController::class, 'index']);
     Route::post('/shares', [ShareController::class, 'store']);
     Route::get('/shares/{share}', [ShareController::class, 'show']);
+    Route::get('/shares/{share}/analytics', [ShareController::class, 'analytics']);
     Route::patch('/shares/{share}', [ShareController::class, 'update']);
     Route::delete('/shares/{share}', [ShareController::class, 'destroy']);
     Route::post('/assets/zip', [ShareController::class, 'downloadZip']);
@@ -114,4 +118,10 @@ Route::middleware(['auth:sanctum', EnsureSuperAdmin::class])->prefix('admin')->g
     Route::get('/pricing/{pricing}', [PricingController::class, 'show']);
     Route::patch('/pricing/{pricing}', [PricingController::class, 'update']);
     Route::delete('/pricing/{pricing}', [PricingController::class, 'destroy']);
+
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::get('/timeseries', [AdminController::class, 'timeseries']);
+    Route::get('/top-users', [AdminController::class, 'topUsers']);
+    Route::get('/top-assets', [AdminController::class, 'topAssets']);
+    Route::get('/top-shares', [AdminController::class, 'topShares']);
 });
