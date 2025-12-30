@@ -3,7 +3,13 @@
 @section('title', 'Insights')
 
 @section('content')
-<div x-data="insightsPage()" x-init="init()">
+<div 
+    x-data="insightsPage()" 
+    x-init="init()"
+    @keydown.escape.window="closeLightbox()"
+    @keydown.arrow-left.window="lightboxIndex !== null && goPrev()"
+    @keydown.arrow-right.window="lightboxIndex !== null && goNext()"
+>
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold tracking-tight text-[#c9d1d9]">Insights</h1>
     </div>
@@ -105,8 +111,8 @@
                 </template>
                 <template x-if="recentlyAnalyzed.length > 0">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                        <template x-for="asset in recentlyAnalyzed" :key="asset.id">
-                            <a :href="'/dashboard?search=' + encodeURIComponent(asset.filename)" class="group">
+                        <template x-for="(asset, index) in recentlyAnalyzed" :key="asset.id">
+                            <div @click="openLightbox(index)" class="group cursor-pointer">
                                 <div class="aspect-square bg-[#0d1117] rounded-lg overflow-hidden mb-2 relative">
                                     <img 
                                         :src="'/api/assets/' + asset.id + '/thumb?w=200&h=200'" 
@@ -116,10 +122,52 @@
                                 </div>
                                 <p class="text-xs text-[#8b949e] truncate" x-text="asset.filename"></p>
                                 <p class="text-xs text-[#58a6ff] line-clamp-2 mt-0.5" x-text="asset.caption || 'No caption'"></p>
-                            </a>
+                            </div>
                         </template>
                     </div>
                 </template>
+            </div>
+        </div>
+    </template>
+
+    <!-- Lightbox -->
+    <template x-if="lightboxIndex !== null && recentlyAnalyzed[lightboxIndex]">
+        <div
+            @click="closeLightbox()"
+            class="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+        >
+            <button
+                @click.stop="closeLightbox()"
+                class="absolute top-5 right-5 text-3xl text-[#c9d1d9] opacity-80 hover:opacity-100 transition-opacity"
+            >✕</button>
+
+            <template x-if="recentlyAnalyzed.length > 1">
+                <button
+                    @click.stop="goPrev()"
+                    class="absolute left-5 top-1/2 -translate-y-1/2 px-5 py-4 bg-white/10 rounded-lg text-2xl text-[#c9d1d9] hover:bg-white/20 transition-colors"
+                >‹</button>
+            </template>
+
+            <template x-if="recentlyAnalyzed.length > 1">
+                <button
+                    @click.stop="goNext()"
+                    class="absolute right-5 top-1/2 -translate-y-1/2 px-5 py-4 bg-white/10 rounded-lg text-2xl text-[#c9d1d9] hover:bg-white/20 transition-colors"
+                >›</button>
+            </template>
+
+            <img
+                @click.stop
+                :src="'/api/assets/' + recentlyAnalyzed[lightboxIndex].id + '?inline=true'"
+                :alt="recentlyAnalyzed[lightboxIndex].filename"
+                class="max-w-[90vw] max-h-[85vh] object-contain rounded"
+            >
+
+            <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-3">
+                <button
+                    @click.stop="editAsset(recentlyAnalyzed[lightboxIndex].id)"
+                    class="px-4 py-2 bg-[#2563eb] rounded-md text-white text-[13px] font-medium hover:bg-[#1d4ed8] transition-colors"
+                >Edit in Photova</button>
+                <span class="text-[#8b949e] text-sm bg-black/60 px-3 py-1.5 rounded" x-text="(lightboxIndex + 1) + ' / ' + recentlyAnalyzed.length"></span>
             </div>
         </div>
     </template>
@@ -136,6 +184,7 @@
             mimeTypes: {},
             recentlyAnalyzed: [],
             maxCount: 1,
+            lightboxIndex: null,
 
             async init() {
                 await this.loadInsights();
@@ -206,6 +255,30 @@
 
             searchMimeType(mime) {
                 window.location.href = '/dashboard?mime_type=' + encodeURIComponent(mime);
+            },
+
+            openLightbox(index) {
+                this.lightboxIndex = index;
+            },
+
+            closeLightbox() {
+                this.lightboxIndex = null;
+            },
+
+            goNext() {
+                if (this.lightboxIndex !== null && this.recentlyAnalyzed.length > 0) {
+                    this.lightboxIndex = (this.lightboxIndex + 1) % this.recentlyAnalyzed.length;
+                }
+            },
+
+            goPrev() {
+                if (this.lightboxIndex !== null && this.recentlyAnalyzed.length > 0) {
+                    this.lightboxIndex = (this.lightboxIndex - 1 + this.recentlyAnalyzed.length) % this.recentlyAnalyzed.length;
+                }
+            },
+
+            editAsset(id) {
+                window.location.href = '/dashboard/playground?asset=' + id;
             }
         }
     }

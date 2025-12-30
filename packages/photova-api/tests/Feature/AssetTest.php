@@ -304,3 +304,119 @@ test('thumbnail cache is invalidated when asset is updated', function () {
     $response2->assertOk()
         ->assertHeader('X-Thumbnail-Cache', 'MISS');
 });
+
+test('geo endpoint returns geotagged assets', function () {
+    $user = User::factory()->create();
+    
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'metadata' => [
+            'exif' => [
+                'location' => [
+                    'lat' => 37.7749,
+                    'lng' => -122.4194,
+                ],
+                'datetime' => [
+                    'original' => '2024-12-25T14:30:00+00:00',
+                ],
+                'camera' => [
+                    'model' => 'iPhone 15 Pro',
+                ],
+            ],
+        ],
+    ]);
+    
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'metadata' => [],
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson('/api/assets/geo');
+
+    $response->assertOk()
+        ->assertJsonCount(1, 'assets')
+        ->assertJsonStructure([
+            'assets' => [
+                '*' => ['id', 'filename', 'lat', 'lng'],
+            ],
+            'bounds' => ['north', 'south', 'east', 'west'],
+            'count',
+        ]);
+    
+    expect($response->json('assets.0.lat'))->toBe(37.7749)
+        ->and($response->json('assets.0.lng'))->toBe(-122.4194)
+        ->and($response->json('count'))->toBe(1);
+});
+
+test('geo endpoint returns bounds for multiple assets', function () {
+    $user = User::factory()->create();
+    
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'metadata' => [
+            'exif' => ['location' => ['lat' => 40.7128, 'lng' => -74.0060]],
+        ],
+    ]);
+    
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'metadata' => [
+            'exif' => ['location' => ['lat' => 34.0522, 'lng' => -118.2437]],
+        ],
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson('/api/assets/geo');
+
+    $response->assertOk()
+        ->assertJsonCount(2, 'assets');
+    
+    $bounds = $response->json('bounds');
+    expect($bounds['north'])->toBe(40.7128)
+        ->and($bounds['south'])->toBe(34.0522)
+        ->and($bounds['west'])->toBe(-118.2437)
+        ->and($bounds['east'])->toBe(-74.0060);
+});
+
+test('geo endpoint returns null bounds when no geotagged assets', function () {
+    $user = User::factory()->create();
+    
+    Asset::factory()->create([
+        'user_id' => $user->id,
+        'metadata' => [],
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson('/api/assets/geo');
+
+    $response->assertOk()
+        ->assertJsonCount(0, 'assets')
+        ->assertJson([
+            'bounds' => null,
+            'count' => 0,
+        ]);
+});
+
+test('asset response includes location when EXIF has GPS data', function () {
+    $user = User::factory()->create();
+    
+    $asset = Asset::factory()->create([
+        'user_id' => $user->id,
+        'metadata' => [
+            'exif' => [
+                'location' => [
+                    'lat' => 37.7749,
+                    'lng' => -122.4194,
+                ],
+            ],
+        ],
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson("/api/assets/{$asset->id}");
+
+    $response->assertOk()
+        ->assertJsonPath('asset.location.lat', 37.7749)
+        ->assertJsonPath('asset.location.lng', -122.4194);
+});

@@ -6,6 +6,9 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Public share page
+Route::get('/s/{slug}', fn($slug) => view('share', ['slug' => $slug]))->name('share.view');
+
 Route::get('/docs', fn() => view('docs'))->name('docs');
 
 Route::get('/og-preview', fn() => view('og.image'))->name('og.preview');
@@ -14,6 +17,7 @@ Route::get('/og-preview', fn() => view('og.image'))->name('og.preview');
 Route::prefix('dashboard')->group(function () {
     Route::get('/', fn() => view('dashboard.assets'))->name('dashboard');
     Route::get('/insights', fn() => view('dashboard.insights'))->name('dashboard.insights');
+    Route::get('/map', fn() => view('dashboard.map'))->name('dashboard.map');
     Route::get('/keys', fn() => view('dashboard.keys'))->name('dashboard.keys');
     Route::get('/usage', fn() => view('dashboard.usage'))->name('dashboard.usage');
     Route::get('/storage', fn() => view('dashboard.storage'))->name('dashboard.storage');

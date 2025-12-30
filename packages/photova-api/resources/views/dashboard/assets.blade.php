@@ -2,6 +2,15 @@
 
 @section('title', 'Files')
 
+@push('head')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    .mini-map-container .leaflet-container { background: #0d1117; }
+    .mini-map-container .leaflet-control-zoom { display: none; }
+    .mini-map-container .leaflet-control-attribution { display: none; }
+</style>
+@endpush
+
 @section('content')
 <div 
     x-data="assetsPage()" 
@@ -243,6 +252,33 @@
                 >Clear selection</button>
             </div>
             <div class="flex items-center gap-2">
+                <button
+                    @click="downloadSelectedZip()"
+                    :disabled="downloadingZip"
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm transition-colors disabled:opacity-50"
+                >
+                    <template x-if="downloadingZip">
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </template>
+                    <template x-if="!downloadingZip">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </template>
+                    ZIP
+                </button>
+                <button
+                    @click="openShareModal()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] border border-[#2563eb] rounded-md text-white text-sm transition-colors"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                    </svg>
+                    Share
+                </button>
                 <button
                     @click="openBulkMoveModal()"
                     class="flex items-center gap-1.5 px-3 py-1.5 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm transition-colors"
@@ -985,6 +1021,37 @@
                     </template>
                 </div>
 
+                <!-- Location Mini-Map -->
+                <template x-if="assetDetails.location && assetDetails.location.lat && assetDetails.location.lng">
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-[#c9d1d9] mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            Location
+                        </h4>
+                        <div 
+                            :id="'mini-map-' + assetDetails.id" 
+                            class="h-40 rounded-lg border border-[#30363d] overflow-hidden"
+                            x-init="$nextTick(() => initMiniMap(assetDetails))"
+                        ></div>
+                        <div class="mt-2 text-xs text-[#8b949e] flex items-center gap-4">
+                            <span x-text="assetDetails.location.lat.toFixed(6) + ', ' + assetDetails.location.lng.toFixed(6)"></span>
+                            <a 
+                                :href="'https://www.google.com/maps?q=' + assetDetails.location.lat + ',' + assetDetails.location.lng"
+                                target="_blank"
+                                class="text-[#58a6ff] hover:underline flex items-center gap-1"
+                            >
+                                Open in Google Maps
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </template>
+
                 <!-- File Info -->
                 <div class="space-y-3 mb-4">
                     <div class="flex justify-between items-center py-2 border-b border-[#30363d]">
@@ -1100,6 +1167,146 @@
             </div>
         </div>
     </template>
+
+    <!-- Share Modal -->
+    <template x-if="showShareModal">
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" @click.self="showShareModal = false" @keydown.escape.window="showShareModal = false">
+            <div class="bg-[#161b22] border border-[#30363d] rounded-lg w-full max-w-md p-6">
+                <template x-if="!shareResult">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-[#c9d1d9]">
+                                Share <span x-text="selectedAssets.length"></span> file<span x-show="selectedAssets.length !== 1">s</span>
+                            </h3>
+                            <button @click="showShareModal = false" class="text-[#8b949e] hover:text-[#c9d1d9]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-[#8b949e] mb-2">Link expires</label>
+                                <select
+                                    x-model="shareForm.expiresIn"
+                                    class="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm focus:outline-none focus:border-[#58a6ff]"
+                                >
+                                    <option value="never">Never</option>
+                                    <option value="24h">24 hours</option>
+                                    <option value="7d">7 days</option>
+                                    <option value="30d">30 days</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        x-model="shareForm.hasPassword"
+                                        class="w-4 h-4 rounded border-[#30363d] bg-[#0d1117] text-[#2563eb] focus:ring-[#2563eb] focus:ring-offset-0"
+                                    >
+                                    <span class="text-sm text-[#c9d1d9]">Require password</span>
+                                </label>
+                                <template x-if="shareForm.hasPassword">
+                                    <input
+                                        type="password"
+                                        x-model="shareForm.password"
+                                        placeholder="Enter password"
+                                        class="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm focus:outline-none focus:border-[#58a6ff]"
+                                    >
+                                </template>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="block text-sm text-[#8b949e] mb-2">Permissions</label>
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        x-model="shareForm.allowDownload"
+                                        class="w-4 h-4 rounded border-[#30363d] bg-[#0d1117] text-[#2563eb] focus:ring-[#2563eb] focus:ring-offset-0"
+                                    >
+                                    <span class="text-sm text-[#c9d1d9]">Allow individual downloads</span>
+                                </label>
+                                <label class="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        x-model="shareForm.allowZip"
+                                        class="w-4 h-4 rounded border-[#30363d] bg-[#0d1117] text-[#2563eb] focus:ring-[#2563eb] focus:ring-offset-0"
+                                    >
+                                    <span class="text-sm text-[#c9d1d9]">Allow download all (ZIP)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button
+                                @click="showShareModal = false"
+                                class="px-4 py-2 text-sm text-[#c9d1d9] hover:bg-[#21262d] rounded-md transition-colors"
+                            >Cancel</button>
+                            <button
+                                @click="createShare()"
+                                :disabled="creatingShare || (shareForm.hasPassword && !shareForm.password)"
+                                class="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
+                            >
+                                <span x-text="creatingShare ? 'Creating...' : 'Create Share Link'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <template x-if="shareResult">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-[#c9d1d9]">Share link created!</h3>
+                            <button @click="showShareModal = false; shareResult = null" class="text-[#8b949e] hover:text-[#c9d1d9]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2 mb-4">
+                            <input
+                                type="text"
+                                :value="shareResult.url"
+                                readonly
+                                class="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm"
+                            >
+                            <button
+                                @click="copyShareLink()"
+                                class="px-4 py-2 bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] rounded-md text-[#c9d1d9] text-sm transition-colors"
+                            >
+                                <span x-text="copiedLink ? 'Copied!' : 'Copy'"></span>
+                            </button>
+                        </div>
+
+                        <div class="text-sm text-[#8b949e] space-y-1 mb-4">
+                            <p>
+                                <span class="text-[#c9d1d9]">Expires:</span>
+                                <span x-text="shareResult.share.expiresAt ? new Date(shareResult.share.expiresAt).toLocaleDateString() : 'Never'"></span>
+                            </p>
+                            <p>
+                                <span class="text-[#c9d1d9]">Password:</span>
+                                <span x-text="shareResult.share.hasPassword ? 'Yes' : 'No'"></span>
+                            </p>
+                            <p>
+                                <span class="text-[#c9d1d9]">Downloads:</span>
+                                <span x-text="shareResult.share.allowDownload ? 'Allowed' : 'Disabled'"></span>
+                            </p>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button
+                                @click="showShareModal = false; shareResult = null; deselectAll()"
+                                class="px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-sm font-medium rounded-md transition-colors"
+                            >Done</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
 </div>
 @endsection
 
@@ -1151,6 +1358,19 @@
             // Multi-select
             selectedAssets: [],
             showBulkMoveModal: false,
+            // Share
+            showShareModal: false,
+            shareForm: {
+                expiresIn: 'never',
+                hasPassword: false,
+                password: '',
+                allowDownload: true,
+                allowZip: true,
+            },
+            creatingShare: false,
+            shareResult: null,
+            copiedLink: false,
+            downloadingZip: false,
 
             get imageAssets() {
                 return this.assets.filter(a => this.isImage(a));
@@ -1818,8 +2038,135 @@
                         }
                     }
                 });
+            },
+
+            openShareModal() {
+                this.shareForm = {
+                    expiresIn: 'never',
+                    hasPassword: false,
+                    password: '',
+                    allowDownload: true,
+                    allowZip: true,
+                };
+                this.shareResult = null;
+                this.showShareModal = true;
+            },
+
+            async createShare() {
+                if (this.selectedAssets.length === 0) return;
+                
+                this.creatingShare = true;
+                try {
+                    const res = await window.apiFetch('/api/shares', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            asset_ids: this.selectedAssets,
+                            expires_in: this.shareForm.expiresIn,
+                            password: this.shareForm.hasPassword ? this.shareForm.password : null,
+                            allow_download: this.shareForm.allowDownload,
+                            allow_zip: this.shareForm.allowZip,
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Failed to create share');
+                    }
+
+                    const data = await res.json();
+                    this.shareResult = data;
+                    this.$dispatch('toast', { message: 'Share link created!', type: 'success' });
+                } catch (e) {
+                    console.error('Create share failed:', e);
+                    this.$dispatch('toast', { message: e.message || 'Failed to create share link', type: 'error' });
+                }
+                this.creatingShare = false;
+            },
+
+            async copyShareLink() {
+                if (!this.shareResult) return;
+                try {
+                    await navigator.clipboard.writeText(this.shareResult.url);
+                    this.copiedLink = true;
+                    setTimeout(() => { this.copiedLink = false; }, 2000);
+                } catch (e) {
+                    console.error('Copy failed:', e);
+                }
+            },
+
+            async downloadSelectedZip() {
+                if (this.selectedAssets.length === 0) return;
+                
+                this.downloadingZip = true;
+                try {
+                    const res = await window.apiFetch('/api/assets/zip', {
+                        method: 'POST',
+                        body: JSON.stringify({ asset_ids: this.selectedAssets })
+                    });
+
+                    if (!res.ok) {
+                        throw new Error('Failed to create ZIP');
+                    }
+
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'download-' + new Date().toISOString().slice(0, 10) + '.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    this.$dispatch('toast', { message: 'ZIP downloaded!', type: 'success' });
+                } catch (e) {
+                    console.error('ZIP download failed:', e);
+                    this.$dispatch('toast', { message: 'Failed to download ZIP', type: 'error' });
+                }
+                this.downloadingZip = false;
+            },
+
+            initMiniMap(asset) {
+                if (!asset.location || !window.L) return;
+                
+                const mapId = 'mini-map-' + asset.id;
+                const container = document.getElementById(mapId);
+                if (!container) return;
+
+                const existingMap = container._leaflet_map;
+                if (existingMap) {
+                    existingMap.remove();
+                }
+
+                const map = L.map(mapId, {
+                    center: [asset.location.lat, asset.location.lng],
+                    zoom: 14,
+                    zoomControl: false,
+                    attributionControl: false,
+                    dragging: false,
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    touchZoom: false
+                });
+
+                container._leaflet_map = map;
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    subdomains: 'abcd',
+                    maxZoom: 19
+                }).addTo(map);
+
+                const icon = L.divIcon({
+                    html: `<svg class="w-8 h-8 text-[#58a6ff]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 32],
+                    className: ''
+                });
+
+                L.marker([asset.location.lat, asset.location.lng], { icon }).addTo(map);
             }
         }
     }
 </script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 @endsection

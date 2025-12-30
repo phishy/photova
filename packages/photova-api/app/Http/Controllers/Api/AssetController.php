@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\AnalyzeAsset;
 use App\Models\Asset;
 use App\Models\StorageBucket;
+use App\Services\ExifService;
 use App\Services\StorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,9 +17,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AssetController extends Controller
 {
-    public function __construct(private StorageService $storage)
-    {
-    }
+    public function __construct(
+        private StorageService $storage,
+        private ExifService $exif
+    ) {}
 
     public function insights(Request $request): JsonResponse
     {
@@ -70,6 +72,42 @@ class AssetController extends Controller
             'wordCloud' => $topWords,
             'mimeTypes' => $mimeTypes,
             'recentlyAnalyzed' => $recentlyAnalyzed,
+        ]);
+    }
+
+    public function geo(Request $request): JsonResponse
+    {
+        $assets = $request->user()->assets()
+            ->whereRaw("metadata->'exif'->'location'->>'lat' IS NOT NULL")
+            ->whereRaw("metadata->'exif'->'location'->>'lng' IS NOT NULL")
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($asset) => [
+                'id' => $asset->id,
+                'filename' => $asset->filename,
+                'lat' => (float) $asset->metadata['exif']['location']['lat'],
+                'lng' => (float) $asset->metadata['exif']['location']['lng'],
+                'altitude' => $asset->metadata['exif']['location']['altitude'] ?? null,
+                'takenAt' => $asset->metadata['exif']['datetime']['original'] ?? null,
+                'camera' => $asset->metadata['exif']['camera']['model'] ?? null,
+            ]);
+
+        $bounds = null;
+        if ($assets->isNotEmpty()) {
+            $lats = $assets->pluck('lat');
+            $lngs = $assets->pluck('lng');
+            $bounds = [
+                'north' => $lats->max(),
+                'south' => $lats->min(),
+                'east' => $lngs->max(),
+                'west' => $lngs->min(),
+            ];
+        }
+
+        return response()->json([
+            'assets' => $assets,
+            'bounds' => $bounds,
+            'count' => $assets->count(),
         ]);
     }
 
@@ -157,10 +195,13 @@ class AssetController extends Controller
             return response()->json(['error' => $message], 413);
         }
 
+        $content = null;
+        
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $filename = $file->getClientOriginalName();
             $mimeType = $file->getMimeType();
+            $content = file_get_contents($file->getRealPath());
             
             try {
                 $result = $this->storage->store($request->user(), $file, $filename, $bucket);
@@ -208,6 +249,15 @@ class AssetController extends Controller
             }
         }
 
+        $metadata = $request->input('metadata', []);
+        
+        if ($content && str_starts_with($mimeType, 'image/')) {
+            $exifData = $this->exif->extract($content, $mimeType);
+            if (!empty($exifData)) {
+                $metadata['exif'] = $exifData;
+            }
+        }
+
         $asset = $request->user()->assets()->create([
             'storage_bucket_id' => $result['storage_bucket_id'],
             'folder_id' => $folderId,
@@ -215,7 +265,7 @@ class AssetController extends Controller
             'filename' => $filename,
             'mime_type' => $mimeType,
             'size' => $result['size'],
-            'metadata' => $request->input('metadata', []),
+            'metadata' => $metadata,
         ]);
 
         if (str_starts_with($mimeType, 'image/') && $this->shouldAutoAnalyze($asset)) {
@@ -581,7 +631,7 @@ class AssetController extends Controller
             ])->toArray()
             : [];
 
-        return [
+        $result = [
             'id' => $asset->id,
             'storageBucketId' => $asset->storage_bucket_id,
             'folderId' => $asset->folder_id,
@@ -593,6 +643,16 @@ class AssetController extends Controller
             'created' => $asset->created_at->toIso8601String(),
             'updated' => $asset->updated_at->toIso8601String(),
         ];
+
+        $location = $asset->metadata['exif']['location'] ?? null;
+        if ($location && isset($location['lat'], $location['lng'])) {
+            $result['location'] = [
+                'lat' => $location['lat'],
+                'lng' => $location['lng'],
+            ];
+        }
+
+        return $result;
     }
 
     private function getExtensionFromMime(string $mimeType): string

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FolderController;
 use App\Http\Controllers\Api\OperationController;
 use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\ShareController;
 use App\Http\Controllers\Api\StorageController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\SystemController;
@@ -22,6 +23,14 @@ Route::get('/openapi.json', [SystemController::class, 'openapi']);
 Route::get('/public/assets/{asset}', [AssetController::class, 'publicDownload'])
     ->name('assets.public')
     ->middleware('signed');
+
+// Public share access (no auth required)
+Route::prefix('s')->group(function () {
+    Route::get('/{slug}', [ShareController::class, 'publicShow']);
+    Route::get('/{slug}/assets/{asset}/thumb', [ShareController::class, 'publicThumbnail']);
+    Route::get('/{slug}/assets/{asset}/download', [ShareController::class, 'publicDownload']);
+    Route::get('/{slug}/zip', [ShareController::class, 'publicZip']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('/signup', [AuthController::class, 'signup']);
@@ -49,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/assets', [AssetController::class, 'index']);
     Route::get('/assets/insights', [AssetController::class, 'insights']);
+    Route::get('/assets/geo', [AssetController::class, 'geo']);
     Route::post('/assets', [AssetController::class, 'store']);
     Route::post('/assets/move', [AssetController::class, 'move']);
     Route::get('/assets/{asset}', [AssetController::class, 'show']);
@@ -69,6 +79,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/tags/{tag}', [TagController::class, 'update']);
     Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
     Route::post('/assets/{asset}/tags', [TagController::class, 'setAssetTags']);
+
+    Route::get('/shares', [ShareController::class, 'index']);
+    Route::post('/shares', [ShareController::class, 'store']);
+    Route::get('/shares/{share}', [ShareController::class, 'show']);
+    Route::patch('/shares/{share}', [ShareController::class, 'update']);
+    Route::delete('/shares/{share}', [ShareController::class, 'destroy']);
+    Route::post('/assets/zip', [ShareController::class, 'downloadZip']);
 
     Route::get('/storage', [StorageController::class, 'index']);
     Route::get('/storage/providers', [StorageController::class, 'providers']);

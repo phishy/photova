@@ -26,12 +26,15 @@ class ReplicateProvider extends BaseProvider
             throw new Exception("No model configured for operation '{$operation}'");
         }
 
+        // Extract version hash from model config (format: "owner/model:version" or just "version")
+        $version = str_contains($model, ':') ? explode(':', $model)[1] : $model;
+
         $input = $this->buildInput($operation, $image, $options);
 
         $response = Http::withToken($this->apiKey)
             ->timeout(120)
             ->post('https://api.replicate.com/v1/predictions', [
-                'version' => $model,
+                'version' => $version,
                 'input' => $input,
             ]);
 
@@ -75,7 +78,10 @@ class ReplicateProvider extends BaseProvider
                 'prompt' => $options['prompt'] ?? '',
             ],
             'unblur', 'restore' => ['img' => $image],
-            'colorize' => ['input_image' => $image],
+            'colorize' => [
+                'input_image' => $image,
+                'model_name' => $options['model_name'] ?? 'Artistic',
+            ],
             'analyze' => array_filter([
                 'image' => $image,
                 'task' => $options['task'] ?? 'image_captioning',
