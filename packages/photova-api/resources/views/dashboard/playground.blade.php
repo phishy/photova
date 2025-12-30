@@ -234,7 +234,7 @@
                         showSidebar: true,
                         showPanel: true,
                         image: assetId
-                            ? `/api/assets/${assetId}?download=true`
+                            ? `/api/assets/${assetId}?inline=true`
                             : 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1600&q=80',
                         onSave: async (blob, metadata) => {
                             const reader = new FileReader();

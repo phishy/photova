@@ -77,7 +77,10 @@
                     <template x-if="Object.keys(mimeTypes).length > 0">
                         <div class="space-y-3">
                             <template x-for="(count, mime) in mimeTypes" :key="mime">
-                                <div>
+                                <div 
+                                    @click="searchMimeType(mime)"
+                                    class="cursor-pointer hover:bg-[#21262d] rounded-lg p-2 -mx-2 transition-colors"
+                                >
                                     <div class="flex justify-between text-sm mb-1">
                                         <span class="text-[#c9d1d9]" x-text="formatMimeType(mime)"></span>
                                         <span class="text-[#8b949e]" x-text="count"></span>
@@ -191,12 +194,18 @@
                     'image/gif': '#a371f7',
                     'image/webp': '#3fb950',
                     'image/svg+xml': '#f778ba',
+                    'image/heic': '#a371f7',
+                    'image/heif': '#a371f7',
                 };
                 return colors[mime] || '#8b949e';
             },
 
             searchWord(word) {
                 window.location.href = '/dashboard?search=' + encodeURIComponent(word);
+            },
+
+            searchMimeType(mime) {
+                window.location.href = '/dashboard?mime_type=' + encodeURIComponent(mime);
             }
         }
     }

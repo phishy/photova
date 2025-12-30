@@ -84,7 +84,32 @@ class AnalyzeAsset implements ShouldQueue
             return null;
         }
 
-        return 'data:' . $this->asset->mime_type . ';base64,' . base64_encode($content);
+        $mimeType = $this->asset->mime_type;
+
+        // Convert HEIC/HEIF to JPEG - AI providers don't support these formats
+        if (in_array($mimeType, ['image/heic', 'image/heif']) && extension_loaded('imagick')) {
+            $content = $this->convertToJpeg($content);
+            $mimeType = 'image/jpeg';
+        }
+
+        return 'data:' . $mimeType . ';base64,' . base64_encode($content);
+    }
+
+    /**
+     * Convert image content to JPEG format using ImageMagick
+     */
+    private function convertToJpeg(string $content): string
+    {
+        // Use dynamic instantiation to avoid static analysis errors (imagick is a runtime extension)
+        $imagick = new ('Imagick')();
+        $imagick->readImageBlob($content);
+        $imagick->autoOrient();
+        $imagick->setImageFormat('jpeg');
+        $imagick->setImageCompressionQuality(92);
+        $output = $imagick->getImageBlob();
+        $imagick->destroy();
+
+        return $output;
     }
 
     private function saveAnalysisResult(array $result): void

@@ -181,19 +181,24 @@
     </div>
 
     <!-- Active filters indicator -->
-    <template x-if="searchQuery || selectedTags.length > 0">
+    <template x-if="searchQuery || mimeTypeFilter || selectedTags.length > 0">
         <div class="flex items-center gap-2 mb-4 text-sm flex-wrap">
             <span class="text-[#8b949e]">
-                <template x-if="selectedTags.length > 0">
+                <template x-if="selectedTags.length > 0 || mimeTypeFilter">
                     <span>Searching all files:</span>
                 </template>
-                <template x-if="selectedTags.length === 0">
+                <template x-if="selectedTags.length === 0 && !mimeTypeFilter">
                     <span>Filtering:</span>
                 </template>
             </span>
             <template x-if="searchQuery">
                 <span class="px-2 py-0.5 bg-[#21262d] rounded text-[#c9d1d9]">
                     "<span x-text="searchQuery"></span>"
+                </span>
+            </template>
+            <template x-if="mimeTypeFilter">
+                <span class="px-2 py-0.5 bg-[#a371f7]/20 rounded text-[#a371f7]">
+                    <span x-text="formatMimeType(mimeTypeFilter)"></span>
                 </span>
             </template>
             <template x-for="tagId in selectedTags" :key="tagId">
@@ -726,7 +731,7 @@
 
             <img
                 @click.stop
-                :src="'/api/assets/' + imageAssets[lightboxIndex].id + '?download=true'"
+                :src="'/api/assets/' + imageAssets[lightboxIndex].id + '?inline=true'"
                 :alt="imageAssets[lightboxIndex].filename"
                 class="max-w-[90vw] max-h-[85vh] object-contain rounded"
             >
@@ -1117,8 +1122,9 @@
             showMoveModal: false,
             assetToMove: null,
             moveTargetFolder: null,
-            // Search & Tags
+            // Search & Tags & Filters
             searchQuery: '',
+            mimeTypeFilter: '',
             tags: [],
             selectedTags: [],
             showTagManager: false,
@@ -1191,6 +1197,7 @@
                 const params = new URLSearchParams(window.location.search);
                 this.currentFolderId = params.get('folder') || null;
                 this.searchQuery = params.get('search') || '';
+                this.mimeTypeFilter = params.get('mime_type') || '';
                 const tagsParam = params.get('tags');
                 this.selectedTags = tagsParam ? tagsParam.split(',') : [];
             },
@@ -1202,6 +1209,9 @@
                 }
                 if (this.searchQuery.trim()) {
                     params.set('search', this.searchQuery.trim());
+                }
+                if (this.mimeTypeFilter) {
+                    params.set('mime_type', this.mimeTypeFilter);
                 }
                 if (this.selectedTags.length > 0) {
                     params.set('tags', this.selectedTags.join(','));
@@ -1239,6 +1249,11 @@
                 });
             },
 
+            formatMimeType(mime) {
+                const parts = mime.split('/');
+                return parts[1]?.toUpperCase() || mime;
+            },
+
             async loadContent() {
                 this.loading = true;
                 await Promise.all([this.loadFolders(), this.loadAssets(), this.loadAllFolders()]);
@@ -1261,8 +1276,8 @@
             async loadAssets() {
                 try {
                     const params = new URLSearchParams();
-                    // Search and tag filtering are global (ignore folder context)
-                    const isGlobalSearch = this.searchQuery.trim() || this.selectedTags.length > 0;
+                    // Search, tag, and mime type filtering are global (ignore folder context)
+                    const isGlobalSearch = this.searchQuery.trim() || this.selectedTags.length > 0 || this.mimeTypeFilter;
                     if (!isGlobalSearch) {
                         if (this.currentFolderId) {
                             params.set('folder_id', this.currentFolderId);
@@ -1272,6 +1287,9 @@
                     }
                     if (this.searchQuery.trim()) {
                         params.set('search', this.searchQuery.trim());
+                    }
+                    if (this.mimeTypeFilter) {
+                        params.set('mime_type', this.mimeTypeFilter);
                     }
                     if (this.selectedTags.length > 0) {
                         params.set('tags', this.selectedTags.join(','));
@@ -1576,6 +1594,7 @@
 
             clearFilters() {
                 this.searchQuery = '';
+                this.mimeTypeFilter = '';
                 this.selectedTags = [];
                 this.updateUrl();
                 this.loadAssets();

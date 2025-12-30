@@ -79,6 +79,7 @@ class AssetController extends Controller
         $folderId = $request->query('folder_id');
         $search = $request->query('search');
         $tagIds = $request->query('tags');
+        $mimeType = $request->query('mime_type');
 
         $query = $request->user()->assets()->with('tags');
 
@@ -89,8 +90,8 @@ class AssetController extends Controller
             $query->where('storage_bucket_id', $storageBucketId);
         }
 
-        // When searching, ignore folder context (flatten results)
-        if (!$search) {
+        // When searching or filtering by mime type, ignore folder context (flatten results)
+        if (!$search && !$mimeType) {
             if ($folderId === 'root' || $folderId === '') {
                 $query->whereNull('folder_id');
             } elseif ($folderId) {
@@ -103,6 +104,10 @@ class AssetController extends Controller
                 $q->where('filename', 'ilike', '%' . $search . '%')
                   ->orWhereRaw("metadata::text ilike ?", ['%' . $search . '%']);
             });
+        }
+
+        if ($mimeType) {
+            $query->where('mime_type', $mimeType);
         }
 
         if ($tagIds) {
@@ -528,11 +533,35 @@ class AssetController extends Controller
             abort(404, 'File not found');
         }
 
+        $mimeType = $asset->mime_type;
+
+        // Convert HEIC/HEIF to JPEG for browser display (browsers don't support HEIC natively)
+        if (in_array($mimeType, ['image/heic', 'image/heif']) && extension_loaded('imagick')) {
+            $content = $this->convertToJpeg($content);
+            $mimeType = 'image/jpeg';
+        }
+
         return response($content, 200, [
-            'Content-Type' => $asset->mime_type,
+            'Content-Type' => $mimeType,
             'Content-Length' => strlen($content),
             'Cache-Control' => 'private, max-age=3600',
         ]);
+    }
+
+    /**
+     * Convert image content to JPEG format using ImageMagick
+     */
+    private function convertToJpeg(string $content): string
+    {
+        $imagick = new ('Imagick')();
+        $imagick->readImageBlob($content);
+        $imagick->autoOrient();
+        $imagick->setImageFormat('jpeg');
+        $imagick->setImageCompressionQuality(92);
+        $output = $imagick->getImageBlob();
+        $imagick->destroy();
+
+        return $output;
     }
 
     private function authorizeAsset(Request $request, Asset $asset): void
