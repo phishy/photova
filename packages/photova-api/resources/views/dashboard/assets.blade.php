@@ -340,22 +340,33 @@
                     <!-- Files Grid -->
                     <template x-if="assets.length > 0">
                         <div>
-                            <template x-if="folders.length > 0 && !searchQuery.trim() && selectedTags.length === 0">
-                                <div class="text-xs text-[#8b949e] uppercase tracking-wide mb-3">Files</div>
-                            </template>
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="text-xs text-[#8b949e] uppercase tracking-wide" 
+                                     x-show="folders.length > 0 && !searchQuery.trim() && selectedTags.length === 0">Files</div>
+                                <div x-show="!(folders.length > 0 && !searchQuery.trim() && selectedTags.length === 0)"></div>
+                                <button 
+                                    @click="allSelected ? deselectAll() : selectAll()"
+                                    class="text-xs text-[#58a6ff] hover:underline ml-auto"
+                                    x-text="allSelected ? 'Deselect all' : 'Select all'"
+                                ></button>
+                            </div>
                             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                                 <template x-for="asset in assets" :key="asset.id">
                                     <div 
-                                        class="group bg-[#161b22] rounded-lg border border-[#30363d] hover:border-[#8b949e]/50 transition-colors"
-                                        :class="draggingAssetId === asset.id ? 'opacity-50' : ''"
+                                        class="group bg-[#161b22] rounded-lg border transition-colors"
+                                        :class="[
+                                            draggingAssetId === asset.id ? 'opacity-50' : '',
+                                            isSelected(asset.id) ? 'border-[#2563eb] ring-2 ring-[#2563eb]/30' : 'border-[#30363d] hover:border-[#8b949e]/50'
+                                        ]"
                                         draggable="true"
                                         @dragstart="startDragAsset($event, asset.id)"
                                         @dragend="endDragAsset()"
                                     >
                                         <div
-                                            @click="isImage(asset) && openLightbox(asset.id)"
-                                            class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden relative rounded-t-lg"
-                                            :class="isImage(asset) ? 'cursor-pointer' : ''"
+                                            @click="selectedAssets.length > 0 ? toggleSelect(asset.id) : (isImage(asset) && openLightbox(asset.id))"
+                                            class="aspect-square bg-[#0d1117] flex items-center justify-center overflow-hidden rounded-t-lg"
+                                            style="position: relative;"
+                                            :class="isImage(asset) || selectedAssets.length > 0 ? 'cursor-pointer' : ''"
                                         >
                                             <template x-if="isImage(asset)">
                                                 <img :src="'/api/assets/' + asset.id + '/thumb?w=400&h=400'" :alt="asset.filename" class="w-full h-full object-cover">
@@ -363,7 +374,23 @@
                                             <template x-if="!isImage(asset)">
                                                 <span class="text-5xl">📄</span>
                                             </template>
-                                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                            <!-- Selection checkbox (top-left corner, Google Photos style) -->
+                                            <button
+                                                @click.stop="toggleSelect(asset.id)"
+                                                style="position: absolute; top: 8px; left: 8px;"
+                                                class="z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all shadow-lg"
+                                                :class="[
+                                                    isSelected(asset.id) || selectedAssets.length > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                                                    isSelected(asset.id) 
+                                                        ? 'bg-[#2563eb] border-2 border-white' 
+                                                        : 'bg-black/50 border-2 border-white/80 hover:bg-black/70'
+                                                ]"
+                                            >
+                                                <svg x-show="isSelected(asset.id)" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </button>
+                                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3" :class="isSelected(asset.id) ? 'opacity-50' : ''">
                                                 <span class="text-white text-xs leading-relaxed line-clamp-4" x-text="asset.metadata?.caption || 'No caption'"></span>
                                             </div>
                                         </div>
@@ -454,6 +481,22 @@
                     <table class="w-full">
                         <thead class="bg-[#21262d] border-b border-[#30363d]">
                             <tr>
+                                <th class="w-12 pl-4 pr-2 py-3">
+                                    <button
+                                        @click="allSelected ? deselectAll() : selectAll()"
+                                        class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                        :class="allSelected 
+                                            ? 'bg-[#2563eb] border border-[#2563eb]' 
+                                            : someSelected 
+                                                ? 'bg-[#2563eb]/50 border border-[#2563eb]' 
+                                                : 'bg-transparent border-2 border-[#484f58] hover:border-[#8b949e]'"
+                                        :title="allSelected ? 'Deselect all' : 'Select all'"
+                                    >
+                                        <svg x-show="allSelected || someSelected" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </button>
+                                </th>
                                 <th class="text-left px-4 py-3 text-xs font-medium text-[#8b949e] uppercase tracking-wide">Name</th>
                                 <th class="text-left px-4 py-3 text-xs font-medium text-[#8b949e] uppercase tracking-wide hidden sm:table-cell">Size</th>
                                 <th class="text-left px-4 py-3 text-xs font-medium text-[#8b949e] uppercase tracking-wide hidden md:table-cell">Modified</th>
@@ -472,6 +515,7 @@
                                     class="cursor-pointer transition-all"
                                     :class="dropTargetFolderId === 'parent' ? 'bg-[#58a6ff]/10' : 'hover:bg-[#21262d]'"
                                 >
+                                    <td class="w-12 pl-4 pr-2 py-3"></td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-3">
                                             <svg class="w-5 h-5 transition-colors" :class="dropTargetFolderId === 'parent' ? 'text-[#58a6ff]' : 'text-[#8b949e]'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -496,6 +540,7 @@
                                     class="cursor-pointer transition-all"
                                     :class="dropTargetFolderId === folder.id ? 'bg-[#58a6ff]/10' : 'hover:bg-[#21262d]'"
                                 >
+                                    <td class="w-12 pl-4 pr-2 py-3"></td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-3">
                                             <svg class="w-5 h-5 transition-colors" :class="dropTargetFolderId === folder.id ? 'text-[#58a6ff]' : 'text-[#8b949e]'" fill="currentColor" viewBox="0 0 24 24">
@@ -533,18 +578,34 @@
                                     </td>
                                 </tr>
                             </template>
-                            <!-- Files -->
-                            <template x-for="asset in assets" :key="'asset-' + asset.id">
-                                <tr 
-                                    @click="isImage(asset) ? openLightbox(asset.id) : openDetailsModal(asset)"
-                                    class="hover:bg-[#21262d] transition-colors cursor-pointer"
-                                    :class="draggingAssetId === asset.id ? 'opacity-50' : ''"
-                                    draggable="true"
-                                    @dragstart="startDragAsset($event, asset.id)"
-                                    @dragend="endDragAsset()"
-                                >
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center gap-3">
+                                            <!-- Files -->
+                                            <template x-for="asset in assets" :key="'asset-' + asset.id">
+                                                <tr 
+                                                    @click="selectedAssets.length > 0 ? toggleSelect(asset.id) : (isImage(asset) ? openLightbox(asset.id) : openDetailsModal(asset))"
+                                                    class="hover:bg-[#21262d] transition-colors cursor-pointer"
+                                                    :class="[
+                                                        draggingAssetId === asset.id ? 'opacity-50' : '',
+                                                        isSelected(asset.id) ? 'bg-[#2563eb]/10' : ''
+                                                    ]"
+                                                    draggable="true"
+                                                    @dragstart="startDragAsset($event, asset.id)"
+                                                    @dragend="endDragAsset()"
+                                                >
+                                                    <td class="w-12 pl-4 pr-2 py-3">
+                                                        <button
+                                                            @click.stop="toggleSelect(asset.id)"
+                                                            class="w-5 h-5 rounded flex items-center justify-center transition-colors"
+                                                            :class="isSelected(asset.id) 
+                                                                ? 'bg-[#2563eb] border border-[#2563eb]' 
+                                                                : 'bg-transparent border-2 border-[#484f58] hover:border-[#8b949e]'"
+                                                        >
+                                                            <svg x-show="isSelected(asset.id)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center gap-3">
                                             <template x-if="isImage(asset)">
                                                 <img 
                                                     :src="'/api/assets/' + asset.id + '/thumb?w=64&h=64'" 

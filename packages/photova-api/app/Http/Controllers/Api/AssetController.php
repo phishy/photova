@@ -409,9 +409,19 @@ class AssetController extends Controller
 
     private function resizeImage(string $content, int $width, int $height, string $mimeType): string
     {
-        $source = imagecreatefromstring($content);
+        // Use Imagick for HEIC/HEIF (GD doesn't support these formats)
+        if (in_array($mimeType, ['image/heic', 'image/heif']) && extension_loaded('imagick')) {
+            return $this->resizeImageWithImagick($content, $width, $height);
+        }
 
+        // Try GD first
+        $source = @imagecreatefromstring($content);
+
+        // Fall back to Imagick if GD fails (e.g., unsupported format)
         if ($source === false) {
+            if (extension_loaded('imagick')) {
+                return $this->resizeImageWithImagick($content, $width, $height);
+            }
             throw new \RuntimeException('Failed to create image from content');
         }
 
@@ -445,6 +455,51 @@ class AssetController extends Controller
         if ($cropped) {
             imagedestroy($cropped);
         }
+
+        return $output;
+    }
+
+    /**
+     * Resize image using ImageMagick (supports HEIC, HEIF, and other formats GD doesn't handle)
+     */
+    private function resizeImageWithImagick(string $content, int $width, int $height): string
+    {
+        // Use dynamic instantiation to avoid static analysis errors (imagick is a runtime extension)
+        $imagick = new ('Imagick')();
+        $imagick->readImageBlob($content);
+        
+        // Handle orientation from EXIF data
+        $imagick->autoOrient();
+
+        $srcWidth = $imagick->getImageWidth();
+        $srcHeight = $imagick->getImageHeight();
+
+        $srcRatio = $srcWidth / $srcHeight;
+        $dstRatio = $width / $height;
+
+        if ($srcRatio > $dstRatio) {
+            $newHeight = $height;
+            $newWidth = (int) ($height * $srcRatio);
+        } else {
+            $newWidth = $width;
+            $newHeight = (int) ($width / $srcRatio);
+        }
+
+        // Resize (use FILTER_LANCZOS = 22)
+        $imagick->resizeImage($newWidth, $newHeight, 22, 1);
+
+        // Crop to exact dimensions (center crop)
+        $cropX = (int) (($newWidth - $width) / 2);
+        $cropY = (int) (($newHeight - $height) / 2);
+        $imagick->cropImage($width, $height, $cropX, $cropY);
+
+        // Convert to JPEG
+        $imagick->setImageFormat('jpeg');
+        $imagick->setImageCompressionQuality(85);
+        $imagick->stripImage(); // Remove metadata for smaller file size
+
+        $output = $imagick->getImageBlob();
+        $imagick->destroy();
 
         return $output;
     }

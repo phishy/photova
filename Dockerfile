@@ -28,7 +28,12 @@ RUN apk add --no-cache \
     unzip \
     postgresql-dev \
     nginx \
-    supervisor
+    supervisor \
+    imagemagick \
+    imagemagick-dev \
+    libheif \
+    libheif-dev \
+    $PHPIZE_DEPS
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
@@ -38,7 +43,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         gd \
         zip \
         bcmath \
-        opcache
+        opcache \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
+    && apk del $PHPIZE_DEPS
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

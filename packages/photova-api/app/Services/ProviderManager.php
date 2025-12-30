@@ -11,9 +11,11 @@ use Exception;
 class ProviderManager
 {
     private array $providers = [];
+    private ImagePreprocessor $preprocessor;
 
     public function __construct()
     {
+        $this->preprocessor = new ImagePreprocessor();
         $this->registerProviders();
     }
 
@@ -47,25 +49,36 @@ class ProviderManager
             throw new Exception("Operation '{$operation}' is not configured");
         }
 
+        $processedImage = $this->applyPreprocessing($image, $config['preprocess'] ?? []);
+
         $primaryProvider = $config['provider'];
         $fallbackProvider = $config['fallback'] ?? null;
 
         if (isset($this->providers[$primaryProvider])) {
             try {
-                return $this->providers[$primaryProvider]->execute($operation, $image, $options);
+                return $this->providers[$primaryProvider]->execute($operation, $processedImage, $options);
             } catch (Exception $e) {
                 if ($fallbackProvider && isset($this->providers[$fallbackProvider])) {
-                    return $this->providers[$fallbackProvider]->execute($operation, $image, $options);
+                    return $this->providers[$fallbackProvider]->execute($operation, $processedImage, $options);
                 }
                 throw $e;
             }
         }
 
         if ($fallbackProvider && isset($this->providers[$fallbackProvider])) {
-            return $this->providers[$fallbackProvider]->execute($operation, $image, $options);
+            return $this->providers[$fallbackProvider]->execute($operation, $processedImage, $options);
         }
 
         throw new Exception("No provider available for operation '{$operation}'");
+    }
+
+    private function applyPreprocessing(string $image, array $preprocessConfig): string
+    {
+        if (empty($preprocessConfig)) {
+            return $image;
+        }
+
+        return $this->preprocessor->process($image, $preprocessConfig);
     }
 
     public function getProvider(string $name): ?BaseProvider

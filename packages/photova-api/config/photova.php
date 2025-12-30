@@ -12,6 +12,7 @@ return [
         ],
         'upscale' => [
             'provider' => env('UPSCALE_PROVIDER', 'replicate'),
+            // Note: upscale needs full-res input, no downscale
         ],
         'unblur' => [
             'provider' => env('UNBLUR_PROVIDER', 'replicate'),
@@ -27,6 +28,11 @@ return [
         ],
         'analyze' => [
             'provider' => env('ANALYZE_PROVIDER', 'replicate'),
+            'preprocess' => [
+                'downscale' => true,
+                'max_width' => 1024,
+                'max_height' => 1024,
+            ],
         ],
     ],
 
