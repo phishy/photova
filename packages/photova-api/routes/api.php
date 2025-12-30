@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/usage/current', [UsageController::class, 'current']);
 
     Route::get('/assets', [AssetController::class, 'index']);
+    Route::get('/assets/insights', [AssetController::class, 'insights']);
     Route::post('/assets', [AssetController::class, 'store']);
     Route::post('/assets/move', [AssetController::class, 'move']);
     Route::get('/assets/{asset}', [AssetController::class, 'show']);

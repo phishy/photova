@@ -20,6 +20,59 @@ class AssetController extends Controller
     {
     }
 
+    public function insights(Request $request): JsonResponse
+    {
+        $assets = $request->user()->assets()->get();
+
+        $totalAssets = $assets->count();
+        $analyzedAssets = $assets->filter(fn($a) => !empty($a->metadata['caption']))->count();
+        $totalSize = $assets->sum('size');
+
+        $wordCounts = [];
+        $stopWords = ['a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'it', 'its', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'we', 'they', 'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'can', 'into', 'from', 'up', 'down', 'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'any', 'about', 'as', 'by'];
+
+        foreach ($assets as $asset) {
+            $caption = $asset->metadata['caption'] ?? '';
+            if (!$caption) continue;
+
+            $words = preg_split('/[\s,.\-!?;:()"\'\[\]]+/', strtolower($caption));
+            foreach ($words as $word) {
+                $word = trim($word);
+                if (strlen($word) < 2 || in_array($word, $stopWords)) continue;
+                $wordCounts[$word] = ($wordCounts[$word] ?? 0) + 1;
+            }
+        }
+
+        arsort($wordCounts);
+        $topWords = array_slice($wordCounts, 0, 50, true);
+
+        $mimeTypes = $assets->groupBy('mime_type')->map->count()->toArray();
+
+        $recentlyAnalyzed = $assets
+            ->filter(fn($a) => !empty($a->metadata['analyzed_at']))
+            ->sortByDesc(fn($a) => $a->metadata['analyzed_at'])
+            ->take(10)
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'filename' => $a->filename,
+                'caption' => $a->metadata['caption'] ?? null,
+                'analyzedAt' => $a->metadata['analyzed_at'] ?? null,
+            ])
+            ->values();
+
+        return response()->json([
+            'stats' => [
+                'totalAssets' => $totalAssets,
+                'analyzedAssets' => $analyzedAssets,
+                'analyzedPercent' => $totalAssets > 0 ? round(($analyzedAssets / $totalAssets) * 100) : 0,
+                'totalSize' => $totalSize,
+            ],
+            'wordCloud' => $topWords,
+            'mimeTypes' => $mimeTypes,
+            'recentlyAnalyzed' => $recentlyAnalyzed,
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $storageBucketId = $request->query('storage_bucket_id');
