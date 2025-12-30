@@ -12,7 +12,7 @@ class FolderController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $bucket = $request->query('bucket', config('photova.storage.default'));
+        $bucket = $request->query('bucket', config('photova.storage.default', 'assets'));
         $parentId = $request->query('parent_id');
 
         $query = $request->user()->folders()->where('bucket', $bucket);
@@ -35,7 +35,7 @@ class FolderController extends Controller
             'parent_id' => 'nullable|uuid|exists:folders,id',
         ]);
 
-        $bucket = $request->query('bucket', config('photova.storage.default'));
+        $bucket = $request->query('bucket', config('photova.storage.default', 'assets'));
 
         if ($validated['parent_id'] ?? null) {
             $parent = Folder::find($validated['parent_id']);

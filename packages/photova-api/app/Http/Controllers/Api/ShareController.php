@@ -187,6 +187,9 @@ class ShareController extends Controller
             if (!$share->checkPassword($password)) {
                 return response()->json(['error' => 'Invalid password'], 401);
             }
+
+            // Store password in session for subsequent thumbnail/download requests
+            session(['share_password_' . $share->id => $password]);
         }
 
         // Increment view count
@@ -253,7 +256,12 @@ class ShareController extends Controller
             abort(404);
         }
 
-        $resized = $this->resizeImage($content, $width, $height);
+        $resized = $this->resizeImage($content, $width, $height, $asset->mime_type);
+
+        if ($resized === null) {
+            // Format not supported by GD and Imagick not available
+            abort(415, 'Image format not supported for thumbnail generation');
+        }
 
         return response($resized, 200, [
             'Content-Type' => 'image/jpeg',
@@ -422,11 +430,23 @@ class ShareController extends Controller
         ];
     }
 
-    private function resizeImage(string $content, int $width, int $height): string
+    private function resizeImage(string $content, int $width, int $height, string $mimeType = ''): ?string
     {
+        // Use Imagick for HEIC/HEIF (GD doesn't support these formats)
+        if (in_array($mimeType, ['image/heic', 'image/heif']) && extension_loaded('imagick')) {
+            return $this->resizeImageWithImagick($content, $width, $height);
+        }
+
+        // Try GD first
         $source = @imagecreatefromstring($content);
+
+        // Fall back to Imagick if GD fails (e.g., unsupported format)
         if ($source === false) {
-            throw new \RuntimeException('Failed to create image');
+            if (extension_loaded('imagick')) {
+                return $this->resizeImageWithImagick($content, $width, $height);
+            }
+            // GD doesn't support this format and Imagick not available
+            return null;
         }
 
         $srcWidth = imagesx($source);
@@ -459,6 +479,51 @@ class ShareController extends Controller
         if ($cropped) {
             imagedestroy($cropped);
         }
+
+        return $output;
+    }
+
+    /**
+     * Resize image using ImageMagick (supports HEIC, HEIF, and other formats GD doesn't handle)
+     */
+    private function resizeImageWithImagick(string $content, int $width, int $height): string
+    {
+        // Use dynamic instantiation to avoid static analysis errors (imagick is a runtime extension)
+        $imagick = new ('Imagick')();
+        $imagick->readImageBlob($content);
+        
+        // Handle orientation from EXIF data
+        $imagick->autoOrient();
+
+        $srcWidth = $imagick->getImageWidth();
+        $srcHeight = $imagick->getImageHeight();
+
+        $srcRatio = $srcWidth / $srcHeight;
+        $dstRatio = $width / $height;
+
+        if ($srcRatio > $dstRatio) {
+            $newHeight = $height;
+            $newWidth = (int) ($height * $srcRatio);
+        } else {
+            $newWidth = $width;
+            $newHeight = (int) ($width / $srcRatio);
+        }
+
+        // Resize (use FILTER_LANCZOS = 22)
+        $imagick->resizeImage($newWidth, $newHeight, 22, 1);
+
+        // Crop to exact dimensions (center crop)
+        $cropX = (int) (($newWidth - $width) / 2);
+        $cropY = (int) (($newHeight - $height) / 2);
+        $imagick->cropImage($width, $height, $cropX, $cropY);
+
+        // Convert to JPEG
+        $imagick->setImageFormat('jpeg');
+        $imagick->setImageCompressionQuality(85);
+        $imagick->stripImage(); // Remove metadata for smaller file size
+
+        $output = $imagick->getImageBlob();
+        $imagick->destroy();
 
         return $output;
     }
