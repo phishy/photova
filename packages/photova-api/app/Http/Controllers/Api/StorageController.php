@@ -56,6 +56,7 @@ class StorageController extends Controller
             'config' => 'required|array',
             'credentials' => 'required|array',
             'is_default' => 'sometimes|boolean',
+            'auto_analyze' => 'sometimes|boolean',
         ]);
 
         $bucket = $request->user()->storageBuckets()->create([
@@ -65,6 +66,7 @@ class StorageController extends Controller
             'credentials' => $validated['credentials'],
             'is_default' => false,
             'is_active' => true,
+            'auto_analyze' => $validated['auto_analyze'] ?? true,
         ]);
 
         $connected = $this->storage->testConnection($bucket);
@@ -105,6 +107,7 @@ class StorageController extends Controller
             'config' => 'sometimes|array',
             'credentials' => 'sometimes|array',
             'is_active' => 'sometimes|boolean',
+            'auto_analyze' => 'sometimes|boolean',
         ]);
 
         if (isset($validated['credentials']) || isset($validated['config'])) {
@@ -394,6 +397,7 @@ class StorageController extends Controller
             'config' => $bucket->config,
             'isDefault' => $bucket->is_default,
             'isActive' => $bucket->is_active,
+            'autoAnalyze' => $bucket->auto_analyze,
             'assetsCount' => $bucket->assets_count ?? 0,
             'lastConnectedAt' => $bucket->last_connected_at?->toIso8601String(),
             'created' => $bucket->created_at->toIso8601String(),

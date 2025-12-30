@@ -27,16 +27,19 @@ class UsageController extends Controller
 
         $byOperation = UsageDaily::where('user_id', $user->id)
             ->where('date', '>=', $startDate)
-            ->selectRaw('operation, SUM(request_count) as requests, SUM(error_count) as errors, SUM(total_latency_ms) as total_latency, SUM(total_cost) as cost, SUM(total_price) as revenue')
-            ->groupBy('operation')
+            ->selectRaw('operation, source, SUM(request_count) as requests, SUM(error_count) as errors, SUM(total_latency_ms) as total_latency, SUM(total_cost) as cost, SUM(total_price) as revenue')
+            ->groupBy('operation', 'source')
             ->get()
-            ->keyBy('operation')
-            ->map(fn ($row) => [
-                'requests' => (int) $row->requests,
-                'errors' => (int) $row->errors,
-                'avgLatencyMs' => $row->requests > 0 ? round($row->total_latency / $row->requests) : 0,
-                'cost' => (float) ($row->cost ?? 0),
-                'revenue' => (float) ($row->revenue ?? 0),
+            ->mapWithKeys(fn ($row) => [
+                $row->operation . ($row->source ? ':' . $row->source : '') => [
+                    'operation' => $row->operation,
+                    'source' => $row->source,
+                    'requests' => (int) $row->requests,
+                    'errors' => (int) $row->errors,
+                    'avgLatencyMs' => $row->requests > 0 ? round($row->total_latency / $row->requests) : 0,
+                    'cost' => (float) ($row->cost ?? 0),
+                    'revenue' => (float) ($row->revenue ?? 0),
+                ],
             ]);
 
         $totalCost = (float) ($monthlyUsage->total_cost ?? 0);

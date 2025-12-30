@@ -160,7 +160,7 @@ class AssetController extends Controller
             'metadata' => $request->input('metadata', []),
         ]);
 
-        if (str_starts_with($mimeType, 'image/')) {
+        if (str_starts_with($mimeType, 'image/') && $this->shouldAutoAnalyze($asset)) {
             AnalyzeAsset::dispatch($asset);
         }
 
@@ -216,7 +216,7 @@ class AssetController extends Controller
                 'size' => $result['size'],
             ]);
 
-            if (str_starts_with($mimeType, 'image/')) {
+            if (str_starts_with($mimeType, 'image/') && $this->shouldAutoAnalyze($asset)) {
                 AnalyzeAsset::dispatch($asset);
             }
         }
@@ -482,5 +482,17 @@ class AssetController extends Controller
             'k' => $value * 1024,
             default => $value,
         };
+    }
+
+    private function shouldAutoAnalyze(Asset $asset): bool
+    {
+        // System storage (no bucket) always auto-analyzes
+        if ($asset->storage_bucket_id === null) {
+            return true;
+        }
+
+        // User bucket - check the bucket's auto_analyze setting
+        $bucket = $asset->storageBucket;
+        return $bucket?->auto_analyze ?? true;
     }
 }

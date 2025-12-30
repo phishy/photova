@@ -66,6 +66,7 @@ class StorageBucket extends Model
         'credentials',
         'is_default',
         'is_active',
+        'auto_analyze',
         'last_connected_at',
     ];
 
@@ -76,6 +77,7 @@ class StorageBucket extends Model
             'credentials' => 'encrypted:array',
             'is_default' => 'boolean',
             'is_active' => 'boolean',
+            'auto_analyze' => 'boolean',
             'last_connected_at' => 'datetime',
         ];
     }

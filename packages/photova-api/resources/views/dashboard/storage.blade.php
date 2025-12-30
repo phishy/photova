@@ -48,6 +48,9 @@
                                 <span x-text="getProviderName(bucket.provider)"></span>
                                 <span class="mx-1">&middot;</span>
                                 <span x-text="bucket.assetsCount + ' assets'"></span>
+                                <template x-if="bucket.autoAnalyze">
+                                    <span class="ml-1.5 text-[#a371f7]" title="Auto-analyze enabled">🧠</span>
+                                </template>
                             </div>
                         </div>
                         <template x-if="bucket.isDefault">
@@ -144,6 +147,11 @@
                         <div class="flex items-center gap-2">
                             <input type="checkbox" x-model="newBucket.isDefault" id="setDefault" class="rounded">
                             <label for="setDefault" class="text-sm text-[#8b949e]">Set as default storage</label>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" x-model="newBucket.autoAnalyze" id="autoAnalyze" class="rounded" checked>
+                            <label for="autoAnalyze" class="text-sm text-[#8b949e]">Auto-analyze uploaded images</label>
                         </div>
 
                         <div class="flex gap-2 pt-2">
@@ -284,7 +292,8 @@ function storagePage() {
             name: '',
             provider: '',
             credentials: {},
-            isDefault: false
+            isDefault: false,
+            autoAnalyze: true
         },
 
         get selectedProvider() {
@@ -381,7 +390,8 @@ function storagePage() {
                         provider: this.newBucket.provider,
                         config,
                         credentials,
-                        is_default: this.newBucket.isDefault
+                        is_default: this.newBucket.isDefault,
+                        auto_analyze: this.newBucket.autoAnalyze
                     })
                 });
                 
@@ -393,7 +403,7 @@ function storagePage() {
                 }
 
                 this.showAddForm = false;
-                this.newBucket = { name: '', provider: '', credentials: {}, isDefault: false };
+                this.newBucket = { name: '', provider: '', credentials: {}, isDefault: false, autoAnalyze: true };
                 await this.loadStorage();
             } catch (e) {
                 this.createError = 'Failed to create bucket';

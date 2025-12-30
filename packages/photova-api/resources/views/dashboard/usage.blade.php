@@ -129,19 +129,22 @@
 
     <!-- Operation Spark Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        <template x-for="(stats, op) in usage.byOperation || {}" :key="op">
+        <template x-for="(stats, key) in usage.byOperation || {}" :key="key">
             <div class="bg-[#161b22] rounded-xl border border-[#30363d] p-4 hover:border-[#58a6ff]/50 transition-colors cursor-default group">
                 <div class="flex items-center gap-2 mb-2">
-                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" :class="opColors[op]?.bg || 'bg-[#58a6ff]/20'" x-text="opIcons[op] || '?'"></div>
-                    <div class="text-xs text-[#8b949e] truncate" x-text="opNames[op] || op"></div>
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm" :class="opColors[stats.operation]?.bg || 'bg-[#58a6ff]/20'" x-text="opIcons[stats.operation] || '?'"></div>
+                    <div class="text-xs text-[#8b949e] truncate">
+                        <span x-text="opNames[stats.operation] || stats.operation"></span>
+                        <span class="opacity-60" x-text="stats.source === 'api' ? ' (API)' : ' (Auto)'"></span>
+                    </div>
                 </div>
                 <div class="text-xl font-semibold text-[#c9d1d9] mb-1" x-text="stats.requests.toLocaleString()"></div>
                 <!-- Mini sparkline -->
                 <div class="h-8 flex items-end gap-px">
-                    <template x-for="(val, i) in getOpSparkline(op)" :key="i">
+                    <template x-for="(val, i) in getOpSparkline(stats.operation)" :key="i">
                         <div 
                             class="flex-1 rounded-t transition-all duration-300"
-                            :class="opColors[op]?.bar || 'bg-[#58a6ff]'"
+                            :class="opColors[stats.operation]?.bar || 'bg-[#58a6ff]'"
                             :style="'height: ' + val + '%'"
                         ></div>
                     </template>
@@ -168,12 +171,17 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <template x-for="(stats, op) in usage.byOperation || {}" :key="op">
+                    <template x-for="(stats, key) in usage.byOperation || {}" :key="key">
                         <tr class="border-b border-[#21262d] hover:bg-[#21262d]/30 transition-colors">
                             <td class="p-3">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-sm" x-text="opIcons[op] || '?'"></span>
-                                    <span class="text-[13px] text-[#c9d1d9]" x-text="opNames[op] || op"></span>
+                                    <span class="text-sm" x-text="opIcons[stats.operation] || '?'"></span>
+                                    <span class="text-[13px] text-[#c9d1d9]" x-text="opNames[stats.operation] || stats.operation"></span>
+                                    <span 
+                                        class="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                                        :class="stats.source === 'api' ? 'bg-[#58a6ff]/20 text-[#58a6ff]' : 'bg-[#a371f7]/20 text-[#a371f7]'"
+                                        x-text="stats.source === 'api' ? 'API' : 'Auto'"
+                                    ></span>
                                 </div>
                             </td>
                             <td class="text-right p-3 text-[13px] text-[#c9d1d9] font-medium" x-text="stats.requests.toLocaleString()"></td>
@@ -251,6 +259,7 @@
                 'colorize': '🎨',
                 'unblur': '✨',
                 'inpaint': '🧹',
+                'analyze': '🧠',
             },
             opNames: {
                 'background-remove': 'Bg Remove',
@@ -259,6 +268,7 @@
                 'colorize': 'Colorize',
                 'unblur': 'Unblur',
                 'inpaint': 'Inpaint',
+                'analyze': 'Analyze',
             },
             storageColors: {
                 'image': 'bg-[#58a6ff]',
