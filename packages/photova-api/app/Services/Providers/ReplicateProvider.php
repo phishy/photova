@@ -44,8 +44,10 @@ class ReplicateProvider extends BaseProvider
 
         // Analysis operations return text, not images
         if (in_array($operation, self::ANALYSIS_OPERATIONS)) {
+            // Strip "Caption:" prefix if present (some models add it)
+            $caption = preg_replace('/^Caption:\s*/i', '', $result);
             return [
-                'caption' => $result,
+                'caption' => $caption,
                 'provider' => $this->name,
                 'model' => $model,
             ];

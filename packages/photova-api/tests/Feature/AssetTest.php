@@ -1,13 +1,16 @@
 <?php
 
+use App\Jobs\AnalyzeAsset;
 use App\Models\Asset;
 use App\Models\StorageBucket;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Storage::fake('assets');
+    Bus::fake([AnalyzeAsset::class]);
 });
 
 test('authenticated user can list their assets', function () {

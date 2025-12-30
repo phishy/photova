@@ -88,54 +88,30 @@ class RcloneService
     public function readFile(StorageBucket $bucket, string $path): string
     {
         $fs = $this->buildFs($bucket);
-        $tempFileName = 'rclone_temp_' . bin2hex(random_bytes(16));
-        $tempDir = sys_get_temp_dir();
-        $tempPath = $tempDir . '/' . $tempFileName;
         
-        Log::debug('Rclone readFile via copyfile', [
+        Log::debug('Rclone readFile via cat', [
             'bucket_id' => $bucket->id,
             'path' => $path,
-            'tempPath' => $tempPath,
         ]);
         
-        try {
-            // Copy from remote to local temp file using rclone
-            $response = Http::timeout($this->timeout)
-                ->post("{$this->apiUrl}/operations/copyfile", [
-                    'srcFs' => $fs,
-                    'srcRemote' => $path,
-                    'dstFs' => $tempDir,
-                    'dstRemote' => $tempFileName,
-                ]);
+        // Use operations/cat which streams file content directly
+        $response = Http::timeout($this->timeout)
+            ->post("{$this->apiUrl}/operations/cat", [
+                'fs' => $fs,
+                'remote' => $path,
+            ]);
 
-            if (!$response->successful()) {
-                Log::warning('Rclone readFile copyfile failed', [
-                    'bucket_id' => $bucket->id,
-                    'path' => $path,
-                    'status' => $response->status(),
-                    'body' => substr($response->body(), 0, 500),
-                ]);
-                throw new Exception("Failed to copy file: {$response->body()}");
-            }
-
-            // Read the temp file
-            if (!file_exists($tempPath)) {
-                throw new Exception("Temp file not created: {$tempPath}");
-            }
-            
-            $contents = file_get_contents($tempPath);
-            
-            if ($contents === false) {
-                throw new Exception("Failed to read temp file: {$tempPath}");
-            }
-            
-            return $contents;
-        } finally {
-            // Always cleanup temp file
-            if (file_exists($tempPath)) {
-                unlink($tempPath);
-            }
+        if (!$response->successful()) {
+            Log::warning('Rclone readFile cat failed', [
+                'bucket_id' => $bucket->id,
+                'path' => $path,
+                'status' => $response->status(),
+                'body' => substr($response->body(), 0, 500),
+            ]);
+            throw new Exception("Failed to read file: {$response->body()}");
         }
+
+        return $response->body();
     }
 
     public function writeFile(StorageBucket $bucket, string $path, string $contents): bool

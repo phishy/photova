@@ -363,8 +363,8 @@
                                             <template x-if="!isImage(asset)">
                                                 <span class="text-5xl">📄</span>
                                             </template>
-                                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <span class="text-white text-xs font-medium">Click to preview</span>
+                                            <div class="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                                <span class="text-white text-xs leading-relaxed line-clamp-4" x-text="asset.metadata?.caption || 'No caption'"></span>
                                             </div>
                                         </div>
                                         <div class="p-3">

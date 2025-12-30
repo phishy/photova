@@ -16,6 +16,7 @@ class UsageDaily extends Model
         'user_id',
         'date',
         'operation',
+        'source',
         'request_count',
         'error_count',
         'total_latency_ms',

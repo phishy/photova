@@ -14,6 +14,7 @@ class UsageLog extends Model
         'user_id',
         'api_key_id',
         'operation',
+        'source',
         'provider',
         'model',
         'status',
