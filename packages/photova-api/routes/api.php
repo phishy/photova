@@ -68,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/assets/{asset}/analytics', [AssetController::class, 'analytics']);
     Route::patch('/assets/{asset}', [AssetController::class, 'update']);
     Route::post('/assets/{asset}/share', [AssetController::class, 'share']);
+    Route::post('/assets/{asset}/rotate', [AssetController::class, 'rotate']);
     Route::delete('/assets/{asset}', [AssetController::class, 'destroy']);
 
     Route::get('/folders', [FolderController::class, 'index']);

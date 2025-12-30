@@ -422,6 +422,129 @@ class AssetController extends Controller
         ]);
     }
 
+    public function rotate(Request $request, Asset $asset): JsonResponse
+    {
+        $this->authorizeAsset($request, $asset);
+
+        $degrees = $request->input('degrees', 90);
+        
+        // Normalize to valid rotation values
+        $degrees = ((int) $degrees % 360 + 360) % 360;
+        if (!in_array($degrees, [0, 90, 180, 270])) {
+            return response()->json(['error' => 'Invalid rotation degrees'], 400);
+        }
+
+        if ($degrees === 0) {
+            return response()->json(['asset' => $this->formatAsset($asset)]);
+        }
+
+        if (!str_starts_with($asset->mime_type, 'image/')) {
+            return response()->json(['error' => 'Asset is not an image'], 400);
+        }
+
+        $content = $this->storage->retrieve($asset);
+        if ($content === null) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        // Rotate using Imagick or GD
+        $rotated = $this->rotateImage($content, $degrees, $asset->mime_type);
+
+        // Delete old file
+        $this->storage->delete($asset);
+
+        // Store rotated image
+        try {
+            $result = $this->storage->store(
+                $request->user(),
+                $rotated,
+                $asset->filename,
+                $asset->storageBucket
+            );
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to save rotated image: ' . $e->getMessage()], 500);
+        }
+
+        $asset->update([
+            'storage_key' => $result['storage_key'],
+            'size' => $result['size'],
+        ]);
+
+        // Clear thumbnail cache
+        $this->clearThumbnailCache($asset);
+
+        $asset->refresh();
+
+        return response()->json(['asset' => $this->formatAsset($asset)]);
+    }
+
+    private function rotateImage(string $content, int $degrees, string $mimeType): string
+    {
+        // Prefer Imagick for better quality and format support
+        if (extension_loaded('imagick')) {
+            return $this->rotateImageWithImagick($content, $degrees, $mimeType);
+        }
+
+        // Fall back to GD
+        return $this->rotateImageWithGd($content, $degrees, $mimeType);
+    }
+
+    private function rotateImageWithImagick(string $content, int $degrees, string $mimeType): string
+    {
+        $imagick = new ('Imagick')();
+        $imagick->readImageBlob($content);
+        
+        // Rotate image (negative because Imagick rotates clockwise with positive values)
+        $imagick->rotateImage('#00000000', $degrees);
+        
+        // Preserve original format
+        $format = match ($mimeType) {
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+            default => 'jpeg',
+        };
+        $imagick->setImageFormat($format);
+        
+        if ($format === 'jpeg') {
+            $imagick->setImageCompressionQuality(92);
+        }
+        
+        $output = $imagick->getImageBlob();
+        $imagick->destroy();
+        
+        return $output;
+    }
+
+    private function rotateImageWithGd(string $content, int $degrees, string $mimeType): string
+    {
+        $source = @imagecreatefromstring($content);
+        if ($source === false) {
+            throw new \RuntimeException('Failed to create image from content');
+        }
+
+        // GD rotates counter-clockwise, so negate degrees for clockwise rotation
+        $rotated = imagerotate($source, -$degrees, 0);
+        if ($rotated === false) {
+            imagedestroy($source);
+            throw new \RuntimeException('Failed to rotate image');
+        }
+
+        ob_start();
+        match ($mimeType) {
+            'image/png' => imagepng($rotated),
+            'image/gif' => imagegif($rotated),
+            'image/webp' => imagewebp($rotated, null, 92),
+            default => imagejpeg($rotated, null, 92),
+        };
+        $output = ob_get_clean();
+
+        imagedestroy($source);
+        imagedestroy($rotated);
+
+        return $output;
+    }
+
     public function publicDownload(Request $request, Asset $asset): StreamedResponse|Response
     {
         if ($request->boolean('inline') || $request->boolean('raw')) {

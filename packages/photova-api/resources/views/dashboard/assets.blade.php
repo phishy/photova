@@ -18,6 +18,7 @@
     @keydown.escape.window="closeLightbox(); showCreateFolder = false; showMoveModal = false; showTagManager = false; showTagAssetModal = false; showDetailsModal = false; confirmModal.show = false"
     @keydown.arrow-left.window="lightboxIndex !== null && goPrev()"
     @keydown.arrow-right.window="lightboxIndex !== null && goNext()"
+    @keydown.window="handleKeydown($event)"
     @drop.prevent="handleDrop($event)"
     @dragover.prevent="dragOver = true"
     @dragleave.prevent="dragOver = false"
@@ -748,8 +749,15 @@
         >
             <button
                 @click.stop="closeLightbox()"
-                class="absolute top-5 right-5 text-3xl text-[#c9d1d9] opacity-80 hover:opacity-100 transition-opacity"
+                class="absolute top-5 right-5 text-3xl text-[#c9d1d9] opacity-80 hover:opacity-100 transition-opacity z-10"
             >✕</button>
+
+            <!-- Keyboard shortcuts hint -->
+            <div class="absolute top-5 left-5 text-xs text-[#8b949e] bg-black/40 px-3 py-2 rounded hidden sm:block">
+                <span class="text-[#c9d1d9]">←→</span> navigate &nbsp;
+                <span class="text-[#c9d1d9]">[ ]</span> rotate &nbsp;
+                <span class="text-[#c9d1d9]">Enter</span> save
+            </div>
 
             <template x-if="imageAssets.length > 1">
                 <button
@@ -766,17 +774,66 @@
             </template>
 
             <img
+                x-ref="lightboxImg"
                 @click.stop
                 :src="'/api/assets/' + imageAssets[lightboxIndex].id + '?inline=true'"
                 :alt="imageAssets[lightboxIndex].filename"
-                class="max-w-[90vw] max-h-[85vh] object-contain rounded"
+                :style="'transform: rotate(' + lightboxRotation + 'deg)'"
+                class="max-w-[90vw] max-h-[85vh] object-contain rounded transition-all duration-150"
             >
 
-            <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-3">
+            <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                <!-- Rotate Left -->
+                <button
+                    @click.stop="rotateLeft()"
+                    class="p-2.5 bg-white/10 rounded-lg text-[#c9d1d9] hover:bg-white/20 transition-colors"
+                    title="Rotate left (or press [)"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="transform: scaleX(-1)">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+                
+                <!-- Rotate Right -->
+                <button
+                    @click.stop="rotateRight()"
+                    class="p-2.5 bg-white/10 rounded-lg text-[#c9d1d9] hover:bg-white/20 transition-colors"
+                    title="Rotate right (or press ])"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </button>
+
+                <!-- Save Rotation (only show when rotated) -->
+                <template x-if="lightboxRotation !== 0">
+                    <button
+                        @click.stop="saveRotation()"
+                        :disabled="rotating"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-green-600 rounded-lg text-white text-[13px] font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+                    >
+                        <template x-if="rotating">
+                            <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </template>
+                        <template x-if="!rotating">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </template>
+                        Save
+                    </button>
+                </template>
+
+                <div class="w-px h-6 bg-white/20 mx-1"></div>
+
                 <button
                     @click.stop="editAsset(imageAssets[lightboxIndex].id)"
-                    class="px-4 py-2 bg-[#2563eb] rounded-md text-white text-[13px] font-medium hover:bg-[#1d4ed8] transition-colors"
+                    class="px-4 py-2 bg-[#2563eb] rounded-lg text-white text-[13px] font-medium hover:bg-[#1d4ed8] transition-colors"
                 >Edit in Photova</button>
+                
                 <span class="text-[#8b949e] text-sm bg-black/60 px-3 py-1.5 rounded" x-text="(lightboxIndex + 1) + ' / ' + imageAssets.length"></span>
             </div>
         </div>
@@ -1347,6 +1404,8 @@
             uploading: false,
             dragOver: false,
             lightboxIndex: null,
+            lightboxRotation: 0,
+            rotating: false,
             viewMode: 'grid',
             currentFolderId: null,
             showCreateFolder: false,
@@ -1431,11 +1490,15 @@
                     this.readStateFromUrl();
                     await this.updateBreadcrumbs();
                     await this.loadContent();
+                    this.restoreLightboxFromUrl();
                 });
                 
                 await this.loadTags();
                 await this.updateBreadcrumbs();
                 await this.loadContent();
+                
+                // Restore lightbox if asset param is in URL
+                this.restoreLightboxFromUrl();
             },
 
             readStateFromUrl() {
@@ -1445,6 +1508,18 @@
                 this.mimeTypeFilter = params.get('mime_type') || '';
                 const tagsParam = params.get('tags');
                 this.selectedTags = tagsParam ? tagsParam.split(',') : [];
+            },
+
+            restoreLightboxFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                const assetId = params.get('asset');
+                if (assetId && this.imageAssets.length > 0) {
+                    const idx = this.imageAssets.findIndex(a => a.id === assetId);
+                    if (idx !== -1) {
+                        this.lightboxIndex = idx;
+                        this.lightboxRotation = 0;
+                    }
+                }
             },
 
             updateUrl(replace = false) {
@@ -1784,23 +1859,119 @@
 
             openLightbox(id) {
                 const idx = this.imageAssets.findIndex(a => a.id === id);
-                if (idx !== -1) this.lightboxIndex = idx;
+                if (idx !== -1) {
+                    this.lightboxIndex = idx;
+                    this.updateLightboxUrl(id);
+                }
             },
 
             closeLightbox() {
                 this.lightboxIndex = null;
+                this.lightboxRotation = 0;
+                this.removeLightboxUrl();
             },
 
             goNext() {
                 if (this.lightboxIndex !== null && this.imageAssets.length > 0) {
                     this.lightboxIndex = (this.lightboxIndex + 1) % this.imageAssets.length;
+                    this.lightboxRotation = 0;
+                    this.updateLightboxUrl(this.imageAssets[this.lightboxIndex].id);
                 }
             },
 
             goPrev() {
                 if (this.lightboxIndex !== null && this.imageAssets.length > 0) {
                     this.lightboxIndex = (this.lightboxIndex - 1 + this.imageAssets.length) % this.imageAssets.length;
+                    this.lightboxRotation = 0;
+                    this.updateLightboxUrl(this.imageAssets[this.lightboxIndex].id);
                 }
+            },
+
+            updateLightboxUrl(assetId) {
+                const params = new URLSearchParams(window.location.search);
+                params.set('asset', assetId);
+                const newUrl = `${window.location.pathname}?${params.toString()}`;
+                history.replaceState({}, '', newUrl);
+            },
+
+            removeLightboxUrl() {
+                const params = new URLSearchParams(window.location.search);
+                params.delete('asset');
+                const newUrl = params.toString() 
+                    ? `${window.location.pathname}?${params.toString()}`
+                    : window.location.pathname;
+                history.replaceState({}, '', newUrl);
+            },
+
+            // Keyboard handler for bracket keys and enter
+            handleKeydown(e) {
+                if (this.lightboxIndex === null) return;
+                
+                if (e.key === '[' || e.key === 'BracketLeft') {
+                    e.preventDefault();
+                    this.rotateLeft();
+                } else if (e.key === ']' || e.key === 'BracketRight') {
+                    e.preventDefault();
+                    this.rotateRight();
+                } else if (e.key === 'Enter' && this.lightboxRotation !== 0) {
+                    e.preventDefault();
+                    this.saveRotation();
+                }
+            },
+
+            // Rotation
+            rotateLeft() {
+                this.lightboxRotation = (this.lightboxRotation - 90 + 360) % 360;
+            },
+
+            rotateRight() {
+                this.lightboxRotation = (this.lightboxRotation + 90) % 360;
+            },
+
+            async saveRotation() {
+                if (this.lightboxRotation === 0 || this.rotating) return;
+                
+                const asset = this.imageAssets[this.lightboxIndex];
+                if (!asset) return;
+                
+                this.rotating = true;
+                try {
+                    const res = await window.apiFetch(`/api/assets/${asset.id}/rotate`, {
+                        method: 'POST',
+                        body: JSON.stringify({ degrees: this.lightboxRotation })
+                    });
+                    
+                    if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Failed to rotate image');
+                    }
+                    
+                    const img = this.$refs.lightboxImg;
+                    if (img) {
+                        const newSrc = `/api/assets/${asset.id}?inline=true&t=${Date.now()}`;
+                        // Preload, then fade out, swap, fade in
+                        const preload = new Image();
+                        preload.onload = () => {
+                            img.style.opacity = '0';
+                            setTimeout(() => {
+                                img.src = newSrc;
+                                this.lightboxRotation = 0;
+                                img.style.opacity = '1';
+                            }, 150);
+                        };
+                        preload.src = newSrc;
+                    } else {
+                        this.lightboxRotation = 0;
+                    }
+                    
+                    // Also reload assets to update thumbnails
+                    await this.loadAssets();
+                    this.$dispatch('toast', { message: 'Image rotated', type: 'success' });
+                } catch (e) {
+                    console.error('Rotate failed:', e);
+                    this.$dispatch('toast', { message: e.message || 'Failed to rotate image', type: 'error' });
+                }
+                this.rotating = false;
             },
 
             // Search
